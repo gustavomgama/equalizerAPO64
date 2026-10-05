@@ -25,13 +25,24 @@ cp "$STUB" "$WORK/stub.so"
 
 cat > "$WORK/config.txt" <<EOF
 Preamp: -3 dB
+Eval: 2+2
+If: inputChannelCount >= 1
+Preamp: -1 dB
+Else:
+Preamp: -20 dB
+EndIf:
 GraphicEQ: 25 0; 1000 3; 16000 -3
 Filter 1: ON PK Fc 2000 Hz Gain -6 dB Q 1.5
-Delay: 5 ms
-Copy: L=R
-LoudnessCorrection: State 1 ReferenceLevel -10 ReferenceOffset 0
+Filter 2: ON HP Fc 200 Hz
+Filter 3: ON IIR Order 1 Coefficients 1 0 1 0
+Copy: L2=L R2=R
+Channel: L2 R2
+Delay: 3 ms
+Stage: post-mix
 Convolution: $WORK/ir.wav
+LoudnessCorrection: State 1 ReferenceLevel -10 ReferenceOffset 0
 VSTPlugin: Library $WORK/stub.so
+Channel: L R
 EOF
 
 "$BIN" --in "$WORK/in.wav" --out "$WORK/out.wav" --config "$WORK/config.txt"
