@@ -50,10 +50,10 @@ It builds the portable filter engine plus a `eqapo-null` WAV-in/WAV-out tool
 used to verify the DSP without an audio server. The PipeWire host and the Qt
 Editor are separate, later pieces.
 
-    # deps (Arch): sudo pacman -S cmake fftw libsndfile
+    # deps (Arch): sudo pacman -S cmake fftw libsndfile pipewire qt6-base
     # muparserx is fetched and built automatically if not installed
     cmake -B build -DCMAKE_BUILD_TYPE=Release
-    cmake --build build -j
+    cmake --build build -j$(( $(nproc) / 2 + 2 ))   # half the cores + 2
     ctest --test-dir build --output-on-failure
 
 Example:
