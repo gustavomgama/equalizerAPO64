@@ -33,7 +33,11 @@ endif()
 add_library(eqapo_core STATIC
   helpers/MemoryHelper.cpp
   helpers/LogHelper.cpp
+  helpers/StringHelper.cpp
   helpers/ConfigPathHelper.cpp
+  parser/LogicalOperators.cpp
+  parser/RegexFunctions.cpp
+  parser/StringOperators.cpp
 )
 target_include_directories(eqapo_core PUBLIC
   ${CMAKE_SOURCE_DIR} ${MUPARSERX_INCLUDES} ${FFTW3_INCLUDE_DIRS} ${SNDFILE_INCLUDE_DIRS}
@@ -48,3 +52,7 @@ add_executable(test_platform tests/test_platform.cpp)
 target_link_libraries(test_platform PRIVATE eqapo_core)
 add_test(NAME platform COMMAND test_platform)
 add_test(NAME windows_untouched COMMAND bash ${CMAKE_SOURCE_DIR}/tests/check_windows_untouched.sh)
+
+add_executable(test_strings tests/test_strings.cpp)
+target_link_libraries(test_strings PRIVATE eqapo_core)
+add_test(NAME strings COMMAND test_strings)

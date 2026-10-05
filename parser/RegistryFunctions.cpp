@@ -19,7 +19,9 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 #include "stdafx.h"
 #include "RegistryFunctions.h"
+#ifdef _WIN32
 #include "../helpers/RegistryHelper.h"
+#endif
 #include "../FilterEngine.h"
 
 using namespace std;
@@ -33,6 +35,7 @@ ReadRegStringFunction::ReadRegStringFunction(FilterEngine* engine)
 
 void ReadRegStringFunction::Eval(ptr_val_type& ret, const ptr_val_type* arg, int argc)
 {
+#ifdef _WIN32
 	if (!arg[0]->IsString())
 		throw ParserError(ErrorContext(ecTYPE_CONFLICT_FUN, -1, GetIdent(), arg[0]->GetType(), 's', 1));
 	if (!arg[1]->IsString())
@@ -53,6 +56,12 @@ void ReadRegStringFunction::Eval(ptr_val_type& ret, const ptr_val_type* arg, int
 	{
 		throw ParserError(e.getMessage());
 	}
+#else
+	// No registry on Linux; return an empty value so configs still parse.
+	(void)arg;
+	(void)argc;
+	*ret = wstring();
+#endif
 }
 
 const char_type* ReadRegStringFunction::GetDesc() const
@@ -73,6 +82,7 @@ ReadRegDWORDFunction::ReadRegDWORDFunction(FilterEngine* engine)
 
 void ReadRegDWORDFunction::Eval(ptr_val_type& ret, const ptr_val_type* arg, int argc)
 {
+#ifdef _WIN32
 	if (!arg[0]->IsString())
 		throw ParserError(ErrorContext(ecTYPE_CONFLICT_FUN, -1, GetIdent(), arg[0]->GetType(), 's', 1));
 	if (!arg[1]->IsString())
@@ -93,6 +103,12 @@ void ReadRegDWORDFunction::Eval(ptr_val_type& ret, const ptr_val_type* arg, int 
 	{
 		throw ParserError(e.getMessage());
 	}
+#else
+	// No registry on Linux; return zero so configs still parse.
+	(void)arg;
+	(void)argc;
+	*ret = (mup::int_type)0;
+#endif
 }
 
 const char_type* ReadRegDWORDFunction::GetDesc() const

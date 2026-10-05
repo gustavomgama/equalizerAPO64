@@ -600,9 +600,11 @@ In `CMakeLists.txt`, add:
 ```cmake
   parser/LogicalOperators.cpp
   parser/RegexFunctions.cpp
-  parser/RegistryFunctions.cpp
   parser/StringOperators.cpp
 ```
+
+`parser/RegistryFunctions.cpp` is deliberately **not** added here: it includes
+`FilterEngine.h`, which is only guarded in Task 3. It is added in Task 4.
 
 Run: `cmake --build build -j && ctest --test-dir build --output-on-failure`
 Expected: PASS — `strings` prints `OK`; `windows_untouched` still passes.
@@ -977,8 +979,9 @@ Keep Windows `_aligned_malloc`/`_aligned_free` under `#ifdef _WIN32`; use
 In `CMakeLists.txt`, add every `.cpp` under `filters/` and
 `filters/loudnessCorrection/`, plus
 `libHybridConv-0.1.1/libHybridConv_eapo.cpp`,
-`helpers/VSTPluginInstance.cpp`, `helpers/VSTPluginLibrary.cpp`. Enumerate them
-explicitly; do not glob.
+`helpers/VSTPluginInstance.cpp`, `helpers/VSTPluginLibrary.cpp`, and
+`parser/RegistryFunctions.cpp` (deferred from Task 2; it needs the now-guarded
+`FilterEngine.h`). Enumerate them explicitly; do not glob.
 
 - [ ] **Step 9: Run the tests to verify they pass**
 
