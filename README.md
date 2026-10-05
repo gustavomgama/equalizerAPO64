@@ -77,13 +77,19 @@ the config is resolved through `dlopen`. Relative paths resolve against
 
 ### Installing
 
-    cmake --install build --prefix ~/.local     # or sudo cmake --install build --prefix /usr/local
+    cmake --install build --prefix ~/.local     # user install
+    # or: sudo cmake --install build --prefix /usr/local
 
 This installs `eqapo-host`, `eqapo-editor`, `eqapo-null`, the systemd user
-unit, and the desktop entry. Enable the host as a user service:
+unit, and the desktop entry under the chosen prefix.
+
+Enable the host as a user service. For a `~/.local` install, point the unit at
+the user binary:
 
     mkdir -p ~/.config/systemd/user
-    install -m644 /usr/local/share/equalizerapo/eqapo-host.service ~/.config/systemd/user/
+    sed 's#/usr/local/bin/eqapo-host#%h/.local/bin/eqapo-host#' \
+        ~/.local/share/equalizerapo/eqapo-host.service \
+        > ~/.config/systemd/user/eqapo-host.service
     systemctl --user daemon-reload
     systemctl --user enable --now eqapo-host.service
 

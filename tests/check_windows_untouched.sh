@@ -1,6 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
-cd "$(git rev-parse --show-toplevel)"
+
+# Use the source dir passed by CMake when available, so out-of-tree builds
+# (e.g. cmake -B /tmp/build) still work. Fall back to the git root.
+if [ "${1:-}" != "" ]; then
+  cd "$1"
+else
+  cd "$(git rev-parse --show-toplevel)"
+fi
 
 # 1. Windows-only build files must never be modified by this work.
 bad=$(git status --porcelain | awk '{print $2}' | grep -E '\.(vcxproj|sln|bat|pro|rc)$' || true)
