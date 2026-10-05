@@ -67,3 +67,7 @@ GraphicEQ, BiQuad, Delay, Copy, LoudnessCorrection, Convolution, and a VST2
 plugin in one config), `device_e2e` (`Device:` routing semantics),
 `logging_e2e` (wide-string log formatting), and `dsp_e2e` (low-pass gain at
 100 Hz vs 10 kHz — validates the filter math, not just finiteness).
+
+The `full_chain_e2e` config exercises **every filter type**: Preamp, Eval,
+If/Else/EndIf, GraphicEQ, BiQuad (PK/HP), IIR, Copy, Channel, Delay, Stage,
+Convolution, LoudnessCorrection, and VST2.
