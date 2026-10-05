@@ -93,6 +93,9 @@ struct Host
 	Ring ring;
 	std::vector<float> inBuf;
 	std::vector<float> outBuf;
+	// Separate scratch for the output callback: the two stream process
+	// callbacks may run on different threads, so they must not share buffers.
+	std::vector<float> popBuf;
 	unsigned channels;
 	struct pw_main_loop* loop = nullptr;
 	struct pw_stream* inStream = nullptr;
@@ -100,7 +103,8 @@ struct Host
 	std::atomic<bool> failed{false};
 
 	explicit Host(unsigned ch)
-		: ring(1u << 15, ch), inBuf(kMaxFrames * ch, 0.0f), outBuf(kMaxFrames * ch, 0.0f), channels(ch)
+		: ring(1u << 15, ch), inBuf(kMaxFrames * ch, 0.0f), outBuf(kMaxFrames * ch, 0.0f),
+		  popBuf(kMaxFrames * ch, 0.0f), channels(ch)
 	{
 	}
 };
@@ -176,8 +180,8 @@ void onOutProcess(void* userdata)
 	if (frames > kMaxFrames)
 		frames = kMaxFrames;
 	size_t count = frames * h->channels;
-	h->ring.pop(h->outBuf.data(), count);
-	std::memcpy(dst, h->outBuf.data(), count * sizeof(float));
+	h->ring.pop(h->popBuf.data(), count);
+	std::memcpy(dst, h->popBuf.data(), count * sizeof(float));
 	if (buf->datas[0].chunk)
 	{
 		buf->datas[0].chunk->offset = 0;
