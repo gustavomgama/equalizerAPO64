@@ -19,6 +19,7 @@
 
 #pragma once
 
+#ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <EndpointVolume.h>
@@ -34,3 +35,25 @@ private:
 	float _minVol;
 	float _maxVol;
 };
+#else
+#include <string>
+
+// HRESULT-compatible return type for the Linux implementation.
+typedef long HRESULT;
+#ifndef S_OK
+#define S_OK 0L
+#endif
+
+// Linux: reads/writes the default PipeWire sink volume via wpctl, converting
+// between the linear value wpctl reports and the dB value the filter expects.
+class VolumeController
+{
+public:
+	VolumeController();
+	HRESULT getVolume(double& currentVolume);
+	HRESULT setVolume(double volume);
+private:
+	double _cachedVolumeDb = 0.0;
+	long long _lastReadMs = 0;
+};
+#endif

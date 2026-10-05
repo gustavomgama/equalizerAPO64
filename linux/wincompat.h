@@ -97,6 +97,10 @@ typedef void* HINSTANCE;
 
 #define swscanf_s swscanf
 
+#ifndef CopyMemory
+#define CopyMemory(dst, src, len) memcpy((dst), (src), (len))
+#endif
+
 // Bounded string copy matching the strcpy_s contract used by the VST code.
 static inline int eqapo_strcpy_s(char* dst, size_t dstSize, const char* src) {
     if (!dst || dstSize == 0) return -1;

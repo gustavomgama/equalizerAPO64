@@ -9,7 +9,7 @@ ships; Linux support is additive behind `#ifdef _WIN32` guards, enforced by the
 | Component | Status |
 |---|---|
 | Filter engine (parser, `FilterEngine`, `FilterConfiguration`) | Native Linux build |
-| Filter set | BiQuad, IIR, GraphicEQ, Convolution, Delay, Copy, Channel, Include, Device, Expression, If, Stage, Preamp |
+| Filter set | BiQuad, IIR, GraphicEQ, Convolution, Delay, Copy, Channel, Include, Device, Expression, If, Stage, Preamp, **LoudnessCorrection** |
 | `eqapo-null` | WAV in → engine → WAV out (DSP verification) |
 | `eqapo-host` | Native PipeWire virtual sink, hot-reload, fail-fast, stats |
 | VST2 | Native `.so` via `dlopen`; relative paths under `~/.vst` |
@@ -38,9 +38,10 @@ to apply the chain system-wide. The host hot-reloads
 
 ## Known limitations on Linux
 
-1. **Loudness correction** is disabled — it depends on reading the Windows
-   system volume (`IAudioEndpointVolume`). A PipeWire-sourced implementation is
-   a follow-up.
+1. **Loudness correction** reads the default sink volume via `wpctl`
+   (WirePlumber). It works when `wpctl` is present; the value is cached for
+   500 ms to avoid spawning a process on every poll. A native libpipewire
+   reader is a possible follow-up.
 2. **APO install / registration checks** and the **Device Selector wizard** are
    Windows-only and are no-ops on Linux with a log message.
 3. **VST crash isolation**: a segfaulting native plugin takes down `eqapo-host`

@@ -39,6 +39,19 @@ int main()
     for (double s : out2) energy2 += s * s;
     assert(energy2 > 0.0);
 
+    // Loudness correction parses and processes on Linux without crashing.
+    {
+        auto out3 = run("LoudnessCorrection: State 1 ReferenceLevel -10 ReferenceOffset 0\n",
+                        impulse, ch, frames);
+        double energy3 = 0.0;
+        for (double s : out3)
+        {
+            assert(std::isfinite(s));
+            energy3 += s * s;
+        }
+        assert(energy3 > 0.0);
+    }
+
     std::printf("OK\n");
     return 0;
 }

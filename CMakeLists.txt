@@ -68,6 +68,9 @@ add_library(eqapo_core STATIC
   filters/StageFilterFactory.cpp
   filters/VSTPluginFilter.cpp
   filters/VSTPluginFilterFactory.cpp
+  filters/loudnessCorrection/LoudnessCorrectionFilter.cpp
+  filters/loudnessCorrection/LoudnessCorrectionFilterFactory.cpp
+  filters/loudnessCorrection/VolumeController.cpp
   helpers/VSTPluginInstance.cpp
   helpers/VSTPluginLibrary.cpp
   helpers/AbstractLibrary.cpp

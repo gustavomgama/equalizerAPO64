@@ -67,9 +67,7 @@
 #include "filters/ConvolutionFilterFactory.h"
 #include "filters/GraphicEQFilterFactory.h"
 #include "filters/VSTPluginFilterFactory.h"
-#ifdef _WIN32
 #include "filters/loudnessCorrection/LoudnessCorrectionFilterFactory.h"
-#endif
 
 using namespace std;
 using namespace mup;
@@ -128,9 +126,7 @@ FilterEngine::FilterEngine()
 	factories.push_back(new ConvolutionFilterFactory());
 	factories.push_back(new GraphicEQFilterFactory());
 	factories.push_back(new VSTPluginFilterFactory());
-#ifdef _WIN32
 	factories.push_back(new LoudnessCorrectionFilterFactory());
-#endif
 }
 
 FilterEngine::~FilterEngine()

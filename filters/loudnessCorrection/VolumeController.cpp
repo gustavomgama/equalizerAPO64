@@ -19,6 +19,8 @@
 
 #include "stdafx.h"
 #include "VolumeController.h"
+
+#ifdef _WIN32
 #include <mmdeviceapi.h>
 
 VolumeController::VolumeController()
@@ -55,3 +57,59 @@ HRESULT VolumeController::setVolume(double volume)
 	volume = fmax(volume, _minVol);
 	return _endpointVolume->SetMasterVolumeLevel(float(volume), NULL);
 }
+#else
+#include <cstdio>
+#include <cmath>
+#include <chrono>
+
+static long long nowMs()
+{
+	return std::chrono::duration_cast<std::chrono::milliseconds>(
+		std::chrono::steady_clock::now().time_since_epoch()).count();
+}
+
+VolumeController::VolumeController() {}
+
+HRESULT VolumeController::getVolume(double& currentVolume)
+{
+	// The filter polls frequently; cache for 500 ms so we spawn wpctl at most
+	// twice per second instead of on every call.
+	long long now = nowMs();
+	if (_lastReadMs != 0 && now - _lastReadMs < 500)
+	{
+		currentVolume = _cachedVolumeDb;
+		return S_OK;
+	}
+	_lastReadMs = now;
+
+	FILE* pipe = popen("wpctl get-volume @DEFAULT_AUDIO_SINK@ 2>/dev/null", "r");
+	if (pipe == NULL)
+		return -1;
+	char buf[128] = {0};
+	bool ok = fgets(buf, sizeof(buf), pipe) != NULL;
+	pclose(pipe);
+	if (!ok)
+		return -1;
+
+	const char* colon = strchr(buf, ':');
+	if (colon == NULL)
+		return -1;
+	double linear = 0.0;
+	if (sscanf(colon + 1, "%lf", &linear) != 1)
+		return -1;
+
+	// wpctl reports a linear amplitude; the filter works in dB.
+	currentVolume = linear <= 0.0 ? -96.0 : 20.0 * log10(linear);
+	_cachedVolumeDb = currentVolume;
+	return S_OK;
+}
+
+HRESULT VolumeController::setVolume(double volume)
+{
+	double linear = pow(10.0, volume / 20.0);
+	char cmd[128];
+	std::snprintf(cmd, sizeof(cmd), "wpctl set-volume @DEFAULT_AUDIO_SINK@ %.4f >/dev/null 2>&1", linear);
+	_lastReadMs = 0; // invalidate cache
+	return system(cmd) == 0 ? S_OK : -1;
+}
+#endif

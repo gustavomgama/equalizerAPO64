@@ -25,6 +25,12 @@
 
 #include <regex>
 #include <sstream>
+#ifndef _WIN32
+#include <thread>
+#include <atomic>
+#include <mutex>
+#include <chrono>
+#endif
 
 #pragma AVRT_VTABLES_BEGIN
 class LoudnessCorrectionFilter : public IFilter
@@ -86,11 +92,19 @@ private:
 	void upDateBiquadCoefficients(const double& freq, const double& bandwidthOrQOrS, const double& dbGain, bool highshelf);
 	bool upDateNeutral();
 
+#ifdef _WIN32
 	void* _parameterUpdateThreadHandle;
 	static unsigned long __stdcall parameterUpdateThread(void* parameter);
 	void* _stopParameterUpdateThreadEvent;
 	void* _parameterchangedEvent;
 	CRITICAL_SECTION _parameterUpdateSection;
+#else
+	std::thread _parameterUpdateThread;
+	static void parameterUpdateThread(LoudnessCorrectionFilter* filter);
+	std::atomic<bool> _stopParameterUpdateThread{false};
+	std::atomic<bool> _parameterchanged{false};
+	std::mutex _parameterUpdateSection;
+#endif
 
 	FilterParameters _parameters;
 	size_t _channelCount;
