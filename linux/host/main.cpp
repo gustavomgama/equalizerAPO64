@@ -21,6 +21,7 @@
 #include <vector>
 
 #include "FilterEngine.h"
+#include "version.h"
 
 namespace {
 
@@ -228,6 +229,21 @@ int main(int argc, char** argv)
 			rate = (unsigned)std::atoi(argv[++i]);
 		else if (!std::strcmp(argv[i], "--channels") && i + 1 < argc)
 			channels = (unsigned)std::atoi(argv[++i]);
+		else if (!std::strcmp(argv[i], "--version"))
+		{
+			std::printf("eqapo-host %d.%d.%d\n", MAJOR, MINOR, REVISION);
+			return 0;
+		}
+		else if (!std::strcmp(argv[i], "--help") || !std::strcmp(argv[i], "-h"))
+		{
+			std::printf("usage: eqapo-host [--config <file>] [--name <sink>] [--rate <hz>] [--channels <n>]\n"
+			            "  --config    one-shot config file (default: ~/.config/equalizerapo/config.txt, hot-reloaded)\n"
+			            "  --name      virtual sink node name (default: EqualizerAPO)\n"
+			            "  --rate      sample rate (default: 48000)\n"
+			            "  --channels  channel count (default: 2)\n"
+			            "  --version   print version and exit\n");
+			return 0;
+		}
 	}
 	if (channels < 1)
 		channels = 1;
