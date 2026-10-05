@@ -25,8 +25,15 @@
 #include <QStyleHints>
 #include "CustomStyle.h"
 #include "MainWindow.h"
-#include "helpers/RegistryHelper.h"
+#include "Editor/helpers/EditorSettingsHelper.h"
 #include "Editor/helpers/GUIHelper.h"
+#ifdef _WIN32
+#include "helpers/RegistryHelper.h"
+#else
+#include "helpers/ConfigPathHelper.h"
+#include <QFile>
+#include <QFileInfo>
+#endif
 
 using namespace std;
 
@@ -49,7 +56,7 @@ int main(int argc, char* argv[])
 			application.setStyle("fusion");
 		application.setStyle(new CustomStyle(application.style()));
 
-		QSettings settings(QString::fromWCharArray(EDITOR_REGPATH), QSettings::NativeFormat);
+		EQAPO_EDITOR_SETTINGS(false);
 
 		QVariant languageValue = settings.value("language");
 		if (languageValue.isValid())
@@ -65,6 +72,7 @@ int main(int argc, char* argv[])
 		if (editorTranslator.load(QLocale(), ":/translations/Editor", "_"))
 			application.installTranslator(&editorTranslator);
 
+#ifdef _WIN32
 		QString configPath = QDir::currentPath();
 		if (RegistryHelper::keyExists(APP_REGPATH) && RegistryHelper::valueExists(APP_REGPATH, L"ConfigPath"))
 			configPath = QString::fromStdWString(RegistryHelper::readValue(APP_REGPATH, L"ConfigPath"));
@@ -78,6 +86,16 @@ int main(int argc, char* argv[])
 
 		if (!RegistryHelper::keyExists(EDITOR_PER_FILE_REGPATH))
 			RegistryHelper::createKey(EDITOR_PER_FILE_REGPATH);
+#else
+		QDir configDir(QString::fromStdWString(ConfigPathHelper::getConfigDir()));
+		configDir.mkpath(".");
+		if (!QFileInfo::exists(configDir.absoluteFilePath("config.txt")))
+		{
+			QFile defaultConfig(configDir.absoluteFilePath("config.txt"));
+			if (defaultConfig.open(QIODevice::WriteOnly))
+				defaultConfig.close();
+		}
+#endif
 
 		MainWindow w(configDir);
 		w.show();

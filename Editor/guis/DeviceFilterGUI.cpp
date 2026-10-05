@@ -21,7 +21,9 @@
 #include "DeviceFilterGUI.h"
 #include "DeviceFilterGUIDialog.h"
 #include <filters/DeviceFilterFactory.h>
+#ifdef _WIN32
 #include <VoicemeeterAPOInfo.h>
+#endif
 #include "ui_DeviceFilterGUI.h"
 
 using namespace std;
@@ -94,9 +96,11 @@ void DeviceFilterGUI::load(const QString& parameters)
 					state = tr("APO installed");
 				else
 					state = tr("APO not installed");
+#ifdef _WIN32
 				VoicemeeterAPOInfo* voicemeeterInfo = dynamic_cast<VoicemeeterAPOInfo*>(apoInfo.get());
 				if (voicemeeterInfo != NULL && !voicemeeterInfo->isVoicemeeterInstalled())
 					state += ", " + tr("Voicemeeter was uninstalled");
+#endif
 				values.append(state);
 				lastItem = new QTreeWidgetItem(ui->treeWidget, values);
 			}

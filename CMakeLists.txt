@@ -116,3 +116,12 @@ add_library(eqapo-vst-stub SHARED linux/vst-test/stub_plugin.cpp)
 target_include_directories(eqapo-vst-stub PRIVATE ${CMAKE_SOURCE_DIR})
 set_target_properties(eqapo-vst-stub PROPERTIES PREFIX "")
 add_test(NAME vst_e2e COMMAND bash ${CMAKE_SOURCE_DIR}/tests/run_vst_e2e.sh $<TARGET_FILE:eqapo-null> $<TARGET_FILE:eqapo-vst-stub>)
+
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets)
+add_subdirectory(Editor)
+
+# Installation (Linux). Installs the host, WAV tool, and Editor, plus the
+# systemd user unit and desktop entry.
+install(TARGETS eqapo-host eqapo-null eqapo-editor RUNTIME DESTINATION bin)
+install(FILES linux/host/eqapo-host.service DESTINATION share/equalizerapo)
+install(FILES linux/eqapo-editor.desktop DESTINATION share/applications)

@@ -23,10 +23,13 @@
 #include <QAbstractEventDispatcher>
 #include <QStringList>
 
+#ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+#endif
 #include "helpers/aeffectx.h"
 #include "helpers/StringHelper.h"
+#include "Editor/helpers/EditorSettingsHelper.h"
 #include "Editor/helpers/GUIHelper.h"
 #include "Editor/MainWindow.h"
 #include "VSTPluginFilterGUIDialog.h"
@@ -258,7 +261,7 @@ void VSTPluginFilterGUI::on_selectButton_clicked()
 {
 	QDir pluginsDir(QString::fromStdWString(VSTPluginLibrary::getDefaultPluginPath()));
 
-	QSettings settings(QString::fromWCharArray(EDITOR_REGPATH), QSettings::NativeFormat);
+	EQAPO_EDITOR_SETTINGS(false);
 	QString lastDir = settings.value("vst/lastDir", "").toString();
 	if (lastDir == "")
 		lastDir = pluginsDir.absolutePath();
@@ -268,9 +271,17 @@ void VSTPluginFilterGUI::on_selectButton_clicked()
 	if (path.length() > 0)
 		fileInfo.setFile(pluginsDir, path);
 
+#ifdef _WIN32
 	QFileDialog dialog(this, tr("Select VST plugin"), fileInfo.absoluteFilePath(), "*.dll");
+#else
+	QFileDialog dialog(this, tr("Select VST plugin"), fileInfo.absoluteFilePath(), "*.so");
+#endif
 	dialog.setFileMode(QFileDialog::ExistingFile);
+#ifdef _WIN32
 	dialog.setNameFilter(tr("VST plugins (*.dll)"));
+#else
+	dialog.setNameFilter(tr("VST plugins (*.so)"));
+#endif
 	if (path.length() > 0)
 		dialog.selectFile(fileInfo.fileName());
 	if (dialog.exec() == QDialog::Accepted)
@@ -380,8 +391,10 @@ bool VSTPluginFilterGUI::embedPlugin()
 {
 	bool result = true;
 
+#ifdef _WIN32
 	__try
 	{
+#endif
 		effect->writeToEffect(chunkData, paramMap);
 
 		HWND hwnd = (HWND)ui->frame->winId();
@@ -390,17 +403,20 @@ bool VSTPluginFilterGUI::embedPlugin()
 		effect->startEditing(hwnd, &width, &height);
 
 		ui->frame->setFixedSize(width, height);
+#ifdef _WIN32
 	}
 	__except (EXCEPTION_EXECUTE_HANDLER)
 	{
 		result = false;
 	}
+#endif
 
 	return result;
 }
 
 void VSTPluginFilterGUI::updatePermissionWarning()
 {
+#ifdef _WIN32
 	if (effect == NULL)
 	{
 		ui->warningTextEdit->setVisible(false);
@@ -474,4 +490,8 @@ void VSTPluginFilterGUI::updatePermissionWarning()
 		ui->warningTextEdit->setFixedSize(textSize + GUIHelper::scale(QSize(40, 15)));
 		ui->warningTextEdit->setVisible(true);
 	}
+#else
+	Q_UNUSED(effect);
+	ui->warningTextEdit->setVisible(false);
+#endif
 }

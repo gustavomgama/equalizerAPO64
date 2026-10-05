@@ -18,8 +18,10 @@
 */
 
 #include <algorithm>
+#ifdef _WIN32
 #include <Ks.h>
 #include <KsMedia.h>
+#endif
 
 #include "Editor/helpers/GUIHelper.h"
 #include "Editor/helpers/GUIChannelHelper.h"

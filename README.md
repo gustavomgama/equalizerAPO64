@@ -75,4 +75,27 @@ VST2 plugins load natively: a `VSTPlugin: Library /path/to/plugin.so` line in
 the config is resolved through `dlopen`. Relative paths resolve against
 `~/.vst`.
 
+### Installing
+
+    cmake --install build --prefix ~/.local     # or sudo cmake --install build --prefix /usr/local
+
+This installs `eqapo-host`, `eqapo-editor`, `eqapo-null`, the systemd user
+unit, and the desktop entry. Enable the host as a user service:
+
+    mkdir -p ~/.config/systemd/user
+    install -m644 /usr/local/share/equalizerapo/eqapo-host.service ~/.config/systemd/user/
+    systemctl --user daemon-reload
+    systemctl --user enable --now eqapo-host.service
+
+The unit restarts the host automatically if PipeWire errors (fail-fast +
+`Restart=on-failure`).
+
+### Editor
+
+`eqapo-editor` is the ported Qt6 GUI. It edits the same `config.txt` and shows
+a live frequency response. On Linux it lists PipeWire devices; Windows-only
+features (APO install/registration checks, the Device Selector wizard,
+loudness correction) are disabled with a log message.
+
+
 

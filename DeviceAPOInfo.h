@@ -24,6 +24,8 @@
 #include <memory>
 #include "AbstractAPOInfo.h"
 
+#ifdef _WIN32
+
 #define APOGUID_NULL L"{00000000-0000-0000-0000-000000000000}"
 #define APOGUID_NOKEY L"!KEY"
 #define APOGUID_NOVALUE L"!VALUE"
@@ -125,6 +127,58 @@ private:
 	// selection in GUI
 	InstallState selectedInstallState;
 };
+
+#else // !_WIN32
+
+// Linux device model. The Windows build keeps the full registry/APO aware
+// implementation; on Linux devices are enumerated from PipeWire instead and
+// APO installation is not applicable.
+class DeviceAPOInfo : public AbstractAPOInfo
+{
+public:
+	static std::vector<std::shared_ptr<AbstractAPOInfo>> loadAllInfos(bool input);
+	static std::wstring getDefaultDevice(bool input, int role = 1);
+	static bool checkProtectedAudioDG(bool fix);
+	static bool checkAPORegistration(bool fix);
+
+	// Fills in the fields for a device discovered on Linux (not part of the
+	// AbstractAPOInfo interface).
+	void linuxInit(const std::wstring& connectionName, const std::wstring& deviceName,
+		const std::wstring& deviceGuid, bool input, bool defaultDevice, unsigned channelCount,
+		unsigned sampleRate, unsigned long channelMask);
+
+	std::wstring getConnectionName() const override;
+	std::wstring getDeviceName() const override;
+	std::wstring getDeviceGuid() const override;
+	std::wstring getDeviceString() const override;
+	unsigned getChannelCount() const override;
+	unsigned getSampleRate() const override;
+	unsigned long getChannelMask() const override;
+	bool isInput() const override;
+	bool isInstalled() const override;
+	bool canBeUpgraded() const override;
+	bool hasChanges() const override;
+	bool isExperimental() const override;
+	bool isEnhancementsDisabled() const override;
+	bool isDefaultDevice() const override;
+	bool isDisabled() const override;
+	bool isUnplugged() const override;
+	void install() override;
+	void uninstall() override;
+	void reinstall() override;
+
+private:
+	std::wstring connectionName;
+	std::wstring deviceName;
+	std::wstring deviceGuid;
+	unsigned channelCount = 2;
+	unsigned sampleRate = 48000;
+	unsigned long channelMask = 3;
+	bool input = false;
+	bool defaultDevice = false;
+};
+
+#endif // _WIN32
 
 class DeviceException
 {

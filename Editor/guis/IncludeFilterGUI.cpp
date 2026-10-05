@@ -19,7 +19,9 @@
 
 #include <QFileDialog>
 
+#ifdef _WIN32
 #include "helpers/RegistryHelper.h"
+#endif
 #include "IncludeFilterGUI.h"
 #include "ui_IncludeFilterGUI.h"
 
@@ -112,6 +114,7 @@ void IncludeFilterGUI::updateFileInfo()
 		{
 			path = QDir::toNativeSeparators(fileInfo.absoluteFilePath());
 
+#ifdef _WIN32
 			ACCESS_MASK mask = GENERIC_READ;
 			try
 			{
@@ -124,6 +127,7 @@ void IncludeFilterGUI::updateFileInfo()
 
 			if ((mask & GENERIC_READ) != GENERIC_READ && (mask & FILE_GENERIC_READ) != FILE_GENERIC_READ)
 				error = tr("The file is not readable for the audio service.\nChange the file permissions or copy the file to the config directory.");
+#endif
 		}
 	}
 

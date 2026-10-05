@@ -17,8 +17,10 @@
     51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 */
 
+#ifdef _WIN32
 #include <Ks.h>
 #include <KsMedia.h>
+#endif
 
 #include "GUIChannelHelper.h"
 

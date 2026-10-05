@@ -30,10 +30,12 @@
 #include "DeviceAPOInfo.h"
 #include "Editor/AnalysisPlotScene.h"
 #include "Editor/AnalysisThread.h"
+#ifdef _WIN32
 #include "helpers/RegistryHelper.h"
 
 #define EDITOR_REGPATH USER_REGPATH L"\\Configuration Editor"
 #define EDITOR_PER_FILE_REGPATH EDITOR_REGPATH L"\\file-specific"
+#endif
 
 namespace Ui {
 class MainWindow;
@@ -117,4 +119,7 @@ private:
 	QStringList recentFiles;
 };
 
+#ifndef EQAPO_ABSTRACTOPOINFO_METATYPE
+#define EQAPO_ABSTRACTOPOINFO_METATYPE
 Q_DECLARE_METATYPE(std::shared_ptr<AbstractAPOInfo>)
+#endif

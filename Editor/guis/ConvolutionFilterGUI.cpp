@@ -21,7 +21,9 @@
 #define ENABLE_SNDFILE_WINDOWS_PROTOTYPES 1
 #include <sndfile.h>
 
+#ifdef _WIN32
 #include "helpers/RegistryHelper.h"
+#endif
 #include "ConvolutionFilterGUI.h"
 #include "ui_ConvolutionFilterGUI.h"
 
@@ -105,6 +107,7 @@ void ConvolutionFilterGUI::updateFileInfo()
 		{
 			path = QDir::toNativeSeparators(fileInfo.absoluteFilePath());
 
+#ifdef _WIN32
 			ACCESS_MASK mask = GENERIC_READ;
 			try
 			{
@@ -121,9 +124,15 @@ void ConvolutionFilterGUI::updateFileInfo()
 				labelsVisible = false;
 			}
 			else
+#endif
 			{
 				SF_INFO info;
+#ifdef _WIN32
 				SNDFILE* file = sf_wchar_open(path.toStdWString().c_str(), SFM_READ, &info);
+#else
+				QByteArray utf8Path = path.toUtf8();
+				SNDFILE* file = sf_open(utf8Path.constData(), SFM_READ, &info);
+#endif
 				if (file == NULL)
 				{
 					error = tr("Unsupported file format");

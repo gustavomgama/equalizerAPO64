@@ -47,4 +47,7 @@ private:
 	Ui::DeviceFilterGUIDialog* ui;
 };
 
+#ifndef EQAPO_ABSTRACTOPOINFO_METATYPE
+#define EQAPO_ABSTRACTOPOINFO_METATYPE
 Q_DECLARE_METATYPE(std::shared_ptr<AbstractAPOInfo>)
+#endif

@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=EqualizerAPO
+GenericName=System-wide Equalizer
+Comment=Configure the EqualizerAPO filter chain
+Exec=eqapo-editor
+Icon=audio-card
+Terminal=false
+Categories=Audio;AudioVideo;Settings;

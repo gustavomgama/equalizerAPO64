@@ -26,21 +26,29 @@
 #include <QStandardItemModel>
 #include <QStringBuilder>
 #include <QScrollArea>
+#include <QScrollBar>
 #include <QFileInfo>
 #include <QFileDialog>
 #include <QMessageBox>
 #include <QProcess>
 #include <QSettings>
 
+#ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <shellapi.h>
+#endif
 
 #include "helpers/StringHelper.h"
 #include "helpers/LogHelper.h"
 #include "helpers/ChannelHelper.h"
+#include "Editor/helpers/EditorSettingsHelper.h"
 #include "Editor/helpers/GUIChannelHelper.h"
 #include "Editor/helpers/GUIHelper.h"
+#ifndef _WIN32
+#include "linux/wincompat.h"
+#include <QFile>
+#endif
 #include "version.h"
 #include "FilterTable.h"
 #include "MainWindow.h"
@@ -106,7 +114,7 @@ MainWindow::MainWindow(QDir configDir, QWidget* parent)
 
 	QStandardItemModel* model = qobject_cast<QStandardItemModel*>(deviceComboBox->model());
 	if (defaultOutputDevice != NULL)
-		deviceComboBox->addItem(tr("Default") + " (" + QString::fromStdWString(defaultOutputDevice->getConnectionName()) + " - " + QString::fromStdWString(defaultOutputDevice->getDeviceName()) + ")", NULL);
+		deviceComboBox->addItem(tr("Default") + " (" + QString::fromStdWString(defaultOutputDevice->getConnectionName()) + " - " + QString::fromStdWString(defaultOutputDevice->getDeviceName()) + ")", QVariant());
 
 	deviceComboBox->addItem(tr("Playback devices:"));
 	QStandardItem* item = model->item(model->rowCount() - 1);
@@ -228,11 +236,16 @@ void MainWindow::doChecks()
 
 void MainWindow::runDeviceSelector()
 {
+#ifdef _WIN32
 	// cannot use QProcess::startDetached because of UAC
 	wstring file = (QDir::toNativeSeparators(QCoreApplication::applicationDirPath() + "/DeviceSelector.exe")).toStdWString();
 	unsigned long long result = (unsigned long long)ShellExecuteW(NULL, L"open", file.c_str(), NULL, NULL, SW_SHOWNORMAL);
 	if (result == SE_ERR_ACCESSDENIED)
 		ShellExecuteW(NULL, L"runas", file.c_str(), NULL, NULL, SW_SHOWNORMAL);
+#else
+	// There is no Device Selector on Linux; APO installation does not apply.
+	LogF(L"Device Selector is not available on this platform");
+#endif
 }
 
 void MainWindow::load(QString path)
@@ -254,6 +267,9 @@ void MainWindow::load(QString path)
 	QElapsedTimer timer;
 	timer.start();
 
+	stringstream inputStream;
+
+#ifdef _WIN32
 	HANDLE hFile = INVALID_HANDLE_VALUE;
 	while (hFile == INVALID_HANDLE_VALUE)
 	{
@@ -272,8 +288,6 @@ void MainWindow::load(QString path)
 		}
 	}
 
-	stringstream inputStream;
-
 	char buf[8192];
 	unsigned long bytesRead = -1;
 	while (ReadFile(hFile, buf, sizeof(buf), &bytesRead, NULL) && bytesRead != 0)
@@ -282,6 +296,17 @@ void MainWindow::load(QString path)
 	}
 
 	CloseHandle(hFile);
+#else
+	QFile file(path);
+	if (!file.open(QIODevice::ReadOnly))
+	{
+		QMessageBox::critical(this, tr("Error"), tr("Error while reading configuration file: %0").arg(file.errorString()));
+		return;
+	}
+	QByteArray fileData = file.readAll();
+	file.close();
+	inputStream.write(fileData.constData(), fileData.size());
+#endif
 
 	inputStream.seekg(0);
 
@@ -334,6 +359,7 @@ void MainWindow::save(FilterTable* filterTable, QString path)
 		byteArray.append(line.toUtf8());
 	}
 
+#ifdef _WIN32
 	HANDLE hFile = INVALID_HANDLE_VALUE;
 	while (hFile == INVALID_HANDLE_VALUE)
 	{
@@ -361,6 +387,20 @@ void MainWindow::save(FilterTable* filterTable, QString path)
 	}
 
 	CloseHandle(hFile);
+#else
+	QFile file(path);
+	if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate))
+	{
+		QMessageBox::critical(this, tr("Error"), tr("Error while writing configuration file: %0").arg(file.errorString()));
+		return;
+	}
+	if (file.write(byteArray) != byteArray.length())
+	{
+		qint64 written = file.write(byteArray);
+		QMessageBox::critical(this, tr("Error"), tr("Only %0/%1 bytes have been written!").arg(written).arg(byteArray.length()));
+	}
+	file.close();
+#endif
 
 	qDebug("Saving took %.1f ms", timer.nsecsElapsed() / 1e6);
 
@@ -791,7 +831,7 @@ void MainWindow::languageSelected(bool selected)
 
 	if (QMessageBox::question(this, tr("Restart required"), tr("Configuration Editor will be restarted to apply the changed settings. Proceed?")) == QMessageBox::Yes)
 	{
-		QSettings settings(QString::fromWCharArray(EDITOR_REGPATH), QSettings::NativeFormat);
+		EQAPO_EDITOR_SETTINGS(false);
 		if (language == QLocale::AnyLanguage)
 		{
 			settings.remove("language");
@@ -818,7 +858,7 @@ void MainWindow::on_actionResetAllGlobalPreferences_triggered()
 {
 	if (QMessageBox::question(this, tr("Restart required"), tr("Configuration Editor will be restarted to apply the changed settings. Proceed?")) == QMessageBox::Yes)
 	{
-		QSettings settings(QString::fromWCharArray(EDITOR_REGPATH), QSettings::NativeFormat);
+		EQAPO_EDITOR_SETTINGS(false);
 		for (const QString& key : settings.childGroups())
 		{
 			if (key != "file-specific")
@@ -837,7 +877,7 @@ void MainWindow::on_actionResetAllFileSpecificPreferences_triggered()
 {
 	if (QMessageBox::question(this, tr("Restart required"), tr("Configuration Editor will be restarted to apply the changed settings. Proceed?")) == QMessageBox::Yes)
 	{
-		QSettings settings(QString::fromWCharArray(EDITOR_PER_FILE_REGPATH), QSettings::NativeFormat);
+		EQAPO_EDITOR_SETTINGS(true);
 		for (const QString& key : settings.childGroups())
 			settings.remove(key);
 		for (const QString& key : settings.childKeys())
@@ -970,7 +1010,7 @@ void MainWindow::startAnalysis()
 
 void MainWindow::loadPreferences()
 {
-	QSettings settings(QString::fromWCharArray(EDITOR_REGPATH), QSettings::NativeFormat);
+	EQAPO_EDITOR_SETTINGS(false);
 	QVariant geometryValue = settings.value("geometry");
 	if (geometryValue.isValid())
 		restoreGeometry(geometryValue.toByteArray());
@@ -1055,7 +1095,7 @@ void MainWindow::savePreferences()
 	if (noSavePreferences)
 		return;
 
-	QSettings settings(QString::fromWCharArray(EDITOR_REGPATH), QSettings::NativeFormat);
+	EQAPO_EDITOR_SETTINGS(false);
 	settings.setValue("geometry", saveGeometry());
 	settings.setValue("windowState", saveState());
 	settings.setValue("instantMode", instantModeCheckBox->isChecked());

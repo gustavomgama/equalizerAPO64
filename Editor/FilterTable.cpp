@@ -49,12 +49,14 @@
 #include "guis/GraphicEQFilterGUIFactory.h"
 #include "guis/ConvolutionFilterGUIFactory.h"
 #include "guis/VSTPluginFilterGUIFactory.h"
+#ifdef _WIN32
 #include "guis/LoudnessCorrectionFilterGUIFactory.h"
+#endif
+#include "Editor/helpers/EditorSettingsHelper.h"
 #include "Editor/helpers/GUIHelper.h"
 #include "helpers/StringHelper.h"
 #include "helpers/LogHelper.h"
 #include "helpers/ChannelHelper.h"
-#include "helpers/RegistryHelper.h"
 #include "FilterTable.h"
 
 using namespace std;
@@ -82,7 +84,9 @@ FilterTable::FilterTable(MainWindow* mainWindow, QWidget* parent)
 	factories.append(new GraphicEQFilterGUIFactory);
 	factories.append(new ConvolutionFilterGUIFactory);
 	factories.append(new VSTPluginFilterGUIFactory);
+#ifdef _WIN32
 	factories.append(new LoudnessCorrectionFilterGUIFactory);
+#endif
 
 	QApplication::instance()->installEventFilter(this);
 }
@@ -265,7 +269,7 @@ void FilterTable::setLines(const QString& configPath, const QList<QString>& line
 		items.append(new Item(line));
 	}
 
-	QSettings settings(QString::fromWCharArray(EDITOR_PER_FILE_REGPATH), QSettings::NativeFormat);
+	EQAPO_EDITOR_SETTINGS(true);
 	settings.beginGroup(QString(configPath).replace('\\', '|'));
 	QVariant prefsValue = settings.value("rowPrefs");
 	QStringList prefLines;
@@ -589,7 +593,7 @@ void FilterTable::savePreferences()
 			}
 		}
 
-		QSettings settings(QString::fromWCharArray(EDITOR_PER_FILE_REGPATH), QSettings::NativeFormat);
+		EQAPO_EDITOR_SETTINGS(true);
 		settings.beginGroup(QString(configPath).replace('\\', '|'));
 		settings.setValue("rowPrefs", prefLines);
 		settings.setValue("scrollX", scrollArea->horizontalScrollBar()->value());
