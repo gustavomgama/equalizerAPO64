@@ -63,7 +63,9 @@ systemctl --user status eqapo-host.service
 
 This creates a virtual sink named `EqualizerAPO` and hot-reloads
 `~/.config/equalizerapo/config.txt`. It deliberately does not change the
-system default sink; route applications to `EqualizerAPO` or set it yourself:
+system default sink; route applications to `EqualizerAPO` or set it yourself.
+The host forwards processed audio to a real hardware sink and never loops into
+its own virtual sink, so making `EqualizerAPO` the default output is safe:
 
 ```bash
 wpctl status                # find the "EqualizerAPO" sink id

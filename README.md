@@ -88,6 +88,10 @@ The host deliberately does **not** change the system default itself: if it
 crashed, the default would point at a dead sink and audio would break. Set it
 yourself (or move individual streams) and restore when finished.
 
+The host pins its own output to a real hardware sink, so selecting
+`EqualizerAPO` as the default is safe: the processed audio is forwarded to the
+real device and never loops back into the virtual sink.
+
 VST2 plugins load natively: a `VSTPlugin: Library /path/to/plugin.so` line in
 the config is resolved through `dlopen`. Relative paths resolve against
 `~/.vst`.

@@ -44,8 +44,11 @@ to apply the chain system-wide. The host hot-reloads
    reader is a possible follow-up.
 2. **`Device:` blocks** match against the Linux sink name (`EqualizerAPO`).
    Use `Device: all` or `Device: EqualizerAPO`; a Windows device name such as
-   `Device: Speakers` will not match and the block is skipped (the engine logs
+   `Speakers` will not match and the block is skipped (the engine logs
    this at trace level). This is the main config-portability gotcha.
+   The host pins its output stream to a real hardware sink (resolved from
+   WirePlumber's default, excluding its own virtual sink), so setting
+   `EqualizerAPO` as the default output does not create a feedback loop.
 3. **APO install / registration checks** and the **Device Selector wizard** are
    Windows-only and are no-ops on Linux with a log message.
 3. **VST crash isolation**: a segfaulting native plugin takes down `eqapo-host`

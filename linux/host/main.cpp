@@ -22,6 +22,7 @@
 
 #include "FilterEngine.h"
 #include "version.h"
+#include "target.h"
 
 namespace {
 
@@ -192,6 +193,88 @@ void onOutProcess(void* userdata)
 	pw_stream_queue_buffer(h->outStream, b);
 }
 
+std::string trim(const std::string& s)
+{
+	size_t b = s.find_first_not_of(" \t\r\n");
+	if (b == std::string::npos)
+		return {};
+	size_t e = s.find_last_not_of(" \t\r\n");
+	return s.substr(b, e - b + 1);
+}
+
+std::string runCapture(const char* cmd)
+{
+	std::string out;
+	FILE* pipe = popen(cmd, "r");
+	if (!pipe)
+		return out;
+	char buf[4096];
+	size_t n;
+	while ((n = fread(buf, 1, sizeof(buf), pipe)) > 0)
+		out.append(buf, n);
+	pclose(pipe);
+	return out;
+}
+
+// WirePlumber stores the default output sink in the "default" metadata object.
+std::string defaultSinkName()
+{
+	const std::string text = runCapture("pw-metadata -n default 2>/dev/null");
+	size_t k = text.find("key:'default.audio.sink'");
+	if (k == std::string::npos)
+		return {};
+	size_t n = text.find("\"name\":\"", k);
+	if (n == std::string::npos)
+		return {};
+	n += 8;
+	size_t end = text.find('"', n);
+	return end == std::string::npos ? std::string() : text.substr(n, end - n);
+}
+
+// Every Audio/Sink node.name currently visible, from `pw-cli ls Node`.
+std::vector<std::string> listSinkNames()
+{
+	std::vector<std::string> sinks;
+	const std::string text = runCapture("pw-cli ls Node 2>/dev/null");
+	bool isSink = false;
+	std::string name;
+	size_t pos = 0;
+	auto flush = [&]() {
+		if (isSink && !name.empty())
+			sinks.push_back(name);
+		isSink = false;
+		name.clear();
+	};
+	while (pos < text.size())
+	{
+		size_t nl = text.find('\n', pos);
+		std::string line = text.substr(pos, nl == std::string::npos ? std::string::npos : nl - pos);
+		// Node blocks start with "\tid <n>, type PipeWire:Interface:Node/…".
+		if (line.find("id ") != std::string::npos && line.find("type PipeWire:Interface:Node") != std::string::npos)
+			flush();
+		size_t eq = line.find(" = \"");
+		if (eq != std::string::npos)
+		{
+			size_t vstart = eq + 4;
+			size_t vend = line.find('"', vstart);
+			if (vend != std::string::npos)
+			{
+				const std::string prop = trim(line.substr(0, eq));
+				const std::string val = line.substr(vstart, vend - vstart);
+				if (prop == "media.class" && val == "Audio/Sink")
+					isSink = true;
+				else if (prop == "node.name")
+					name = val;
+			}
+		}
+		if (nl == std::string::npos)
+			break;
+		pos = nl + 1;
+	}
+	flush();
+	return sinks;
+}
+
 const struct spa_pod* makeFormat(struct spa_pod_builder* b, unsigned channels, unsigned rate)
 {
 	struct spa_audio_info_raw info = {};
@@ -301,8 +384,21 @@ int main(int argc, char** argv)
 		PW_KEY_NODE_NAME, "eqapo_output",
 		PW_KEY_APP_NAME, "EqualizerAPO",
 		nullptr);
-	if (!target.empty())
-		pw_properties_set(outProps, PW_KEY_NODE_TARGET, target.c_str());
+	// Pin the output to a real sink. If we left it target-less, WirePlumber
+	// would follow the default sink — which is this host's own virtual sink
+	// once the user selects it, creating a feedback loop.
+	std::string outTarget = target;
+	for (int attempt = 0; outTarget.empty() && attempt < 15; ++attempt)
+	{
+		outTarget = eqapo::chooseOutputTarget(target, nodeName, defaultSinkName(), listSinkNames());
+		if (outTarget.empty())
+			std::this_thread::sleep_for(std::chrono::milliseconds(200));
+	}
+	if (!outTarget.empty())
+		pw_properties_set(outProps, PW_KEY_TARGET_OBJECT, outTarget.c_str());
+	std::fprintf(stderr, "eqapo-host: output target '%s'\n",
+		outTarget.empty() ? "(system default)" : outTarget.c_str());
+
 	struct pw_stream_events outEvents = {};
 	outEvents.version = PW_VERSION_STREAM_EVENTS;
 	outEvents.process = onOutProcess;
