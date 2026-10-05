@@ -59,9 +59,10 @@ to apply the chain system-wide. The host hot-reloads
 
 ## Verification
 
-`ctest` runs 10 tests: `platform`, `windows_untouched`, `strings`,
+`ctest` runs 11 tests: `platform`, `windows_untouched`, `strings`,
 `engine_preamp`, `filters`, `null_e2e` (real WAV through the engine),
 `host_e2e` (live PipeWire virtual sink + link), `vst_e2e` (stub VST2 plugin
 loaded via `dlopen` and its gain asserted), `full_chain_e2e` (Preamp,
 GraphicEQ, BiQuad, Delay, Copy, LoudnessCorrection, Convolution, and a VST2
-plugin in one config), and `device_e2e` (`Device:` routing semantics).
+plugin in one config), `device_e2e` (`Device:` routing semantics), and
+`logging_e2e` (wide-string log formatting).
