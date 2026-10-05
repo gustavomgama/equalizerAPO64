@@ -99,6 +99,9 @@ jobs:
         working-directory: packaging/arch/out
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # `gh` would otherwise resolve the repo via git, which now belongs
+          # to builder and trips git's dubious-ownership check as root.
+          GH_REPO: ${{ github.repository }}
         run: |
           gh release view arch-repo >/dev/null 2>&1 || \
             gh release create arch-repo --prerelease \
