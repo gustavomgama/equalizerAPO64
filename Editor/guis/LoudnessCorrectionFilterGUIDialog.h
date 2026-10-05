@@ -26,6 +26,8 @@ namespace Ui {
 class LoudnessCorrectionFilterGUIDialog;
 }
 
+class QProcess;
+
 class LoudnessCorrectionFilterGUIDialog : public QDialog
 {
 	Q_OBJECT
@@ -47,4 +49,7 @@ private slots:
 private:
 	Ui::LoudnessCorrectionFilterGUIDialog* ui;
 	QBuffer buffer;
+#ifndef _WIN32
+	QProcess* _player = nullptr;
+#endif
 };

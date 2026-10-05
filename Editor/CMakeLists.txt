@@ -86,6 +86,9 @@ set(EDITOR_SOURCES
   guis/VSTPluginFilterGUI.cpp
   guis/VSTPluginFilterGUIDialog.cpp
   guis/VSTPluginFilterGUIFactory.cpp
+  guis/LoudnessCorrectionFilterGUI.cpp
+  guis/LoudnessCorrectionFilterGUIDialog.cpp
+  guis/LoudnessCorrectionFilterGUIFactory.cpp
 )
 
 if(WIN32)
@@ -94,9 +97,6 @@ if(WIN32)
     ../DeviceAPOInfo.cpp
     ../VoicemeeterAPOInfo.cpp
     ../helpers/RegistryHelper.cpp
-    guis/LoudnessCorrectionFilterGUI.cpp
-    guis/LoudnessCorrectionFilterGUIDialog.cpp
-    guis/LoudnessCorrectionFilterGUIFactory.cpp
   )
 else()
   list(APPEND EDITOR_SOURCES
@@ -124,14 +124,9 @@ set(EDITOR_FORMS
   guis/StageFilterGUI.ui
   guis/VSTPluginFilterGUIDialog.ui
   guis/VSTPluginFilterGUI.ui
+  guis/LoudnessCorrectionFilterGUIDialog.ui
+  guis/LoudnessCorrectionFilterGUI.ui
 )
-
-if(WIN32)
-  list(APPEND EDITOR_FORMS
-    guis/LoudnessCorrectionFilterGUIDialog.ui
-    guis/LoudnessCorrectionFilterGUI.ui
-  )
-endif()
 
 add_executable(eqapo-editor
   ${EDITOR_SOURCES}

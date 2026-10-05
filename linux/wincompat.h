@@ -101,6 +101,17 @@ typedef void* HINSTANCE;
 #define CopyMemory(dst, src, len) memcpy((dst), (src), (len))
 #endif
 
+#ifndef ARRAYSIZE
+#define ARRAYSIZE(a) (sizeof(a) / sizeof((a)[0]))
+#endif
+
+#ifndef SUCCEEDED
+#define SUCCEEDED(hr) (((long)(hr)) >= 0)
+#endif
+#ifndef FAILED
+#define FAILED(hr) (((long)(hr)) < 0)
+#endif
+
 // Bounded string copy matching the strcpy_s contract used by the VST code.
 static inline int eqapo_strcpy_s(char* dst, size_t dstSize, const char* src) {
     if (!dst || dstSize == 0) return -1;

@@ -49,9 +49,7 @@
 #include "guis/GraphicEQFilterGUIFactory.h"
 #include "guis/ConvolutionFilterGUIFactory.h"
 #include "guis/VSTPluginFilterGUIFactory.h"
-#ifdef _WIN32
 #include "guis/LoudnessCorrectionFilterGUIFactory.h"
-#endif
 #include "Editor/helpers/EditorSettingsHelper.h"
 #include "Editor/helpers/GUIHelper.h"
 #include "helpers/StringHelper.h"
@@ -84,9 +82,7 @@ FilterTable::FilterTable(MainWindow* mainWindow, QWidget* parent)
 	factories.append(new GraphicEQFilterGUIFactory);
 	factories.append(new ConvolutionFilterGUIFactory);
 	factories.append(new VSTPluginFilterGUIFactory);
-#ifdef _WIN32
 	factories.append(new LoudnessCorrectionFilterGUIFactory);
-#endif
 
 	QApplication::instance()->installEventFilter(this);
 }

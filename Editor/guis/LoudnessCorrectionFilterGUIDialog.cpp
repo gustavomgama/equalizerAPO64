@@ -18,9 +18,14 @@
 */
 
 #include <QFile>
+#ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <mmsystem.h>
+#else
+#include <QDir>
+#include <QProcess>
+#endif
 #include "Editor/helpers/QtSndfileHandle.h"
 
 #include "LoudnessCorrectionFilterGUIDialog.h"
@@ -75,7 +80,26 @@ void LoudnessCorrectionFilterGUIDialog::on_playButton_clicked()
 	}
 	buffer.close();
 
+#ifdef _WIN32
 	PlaySoundA(buffer.data().data(), NULL, SND_MEMORY | SND_ASYNC | SND_LOOP);
+#else
+	// Linux: write the generated WAV to a temp file and loop it with pw-play.
+	QString path = QDir::tempPath() + "/eqapo-pinknoise.wav";
+	QFile out(path);
+	if (out.open(QIODevice::WriteOnly))
+	{
+		out.write(buffer.data());
+		out.close();
+		if (_player)
+		{
+			_player->kill();
+			_player->waitForFinished(200);
+			delete _player;
+		}
+		_player = new QProcess(this);
+		_player->start("pw-play", QStringList() << path);
+	}
+#endif
 }
 
 void LoudnessCorrectionFilterGUIDialog::on_stopButton_clicked()
@@ -83,7 +107,18 @@ void LoudnessCorrectionFilterGUIDialog::on_stopButton_clicked()
 	if (buffer.size() == 0)
 		return;
 
+#ifdef _WIN32
 	PlaySoundA(NULL, NULL, 0);
+#else
+	if (_player)
+	{
+		_player->kill();
+		_player->waitForFinished(200);
+		delete _player;
+		_player = nullptr;
+	}
+	QFile::remove(QDir::tempPath() + "/eqapo-pinknoise.wav");
+#endif
 	buffer.buffer().clear();
 }
 
