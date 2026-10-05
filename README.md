@@ -42,3 +42,21 @@ Local builds are configured via shared environment variables, directly configura
     <TCLAP_ROOT Condition="'$(TCLAP_ROOT)'==''">F:\Git\tclap</TCLAP_ROOT>
   </PropertyGroup>
 ```
+
+## Building on Linux
+
+The Windows build is unchanged; the Linux build is additive and uses CMake.
+It builds the portable filter engine plus a `eqapo-null` WAV-in/WAV-out tool
+used to verify the DSP without an audio server. The PipeWire host and the Qt
+Editor are separate, later pieces.
+
+    # deps (Arch): sudo pacman -S cmake fftw libsndfile
+    # muparserx is fetched and built automatically if not installed
+    cmake -B build -DCMAKE_BUILD_TYPE=Release
+    cmake --build build -j
+    ctest --test-dir build --output-on-failure
+
+Example:
+
+    ./build/eqapo-null --in input.wav --out output.wav --config ~/.config/equalizerapo/config.txt
+
