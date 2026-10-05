@@ -39,6 +39,46 @@ FILE* LogHelper::presetFP = NULL;
 bool LogHelper::compact = false;
 bool LogHelper::useConsoleColors = false;
 
+#ifndef _WIN32
+// The shared code follows the MSVC wide-printf convention: `%s` is a wide
+// string and `%S` is a narrow one. glibc is the opposite (`%s` = char*,
+// `%S` = wchar_t*). Swap the two specifiers so messages are not truncated.
+static std::wstring swapStringSpecifiers(const wchar_t* format)
+{
+	static const wchar_t* kConversions = L"diouxXeEfFgGaAcspnS";
+	std::wstring out;
+	for (const wchar_t* p = format; *p; ++p)
+	{
+		if (*p != L'%')
+		{
+			out.push_back(*p);
+			continue;
+		}
+		out.push_back(L'%');
+		++p;
+		if (*p == L'%')
+		{
+			out.push_back(L'%');
+			continue;
+		}
+		while (*p && !wcschr(kConversions, *p))
+		{
+			out.push_back(*p);
+			++p;
+		}
+		if (!*p)
+			break;
+		wchar_t conv = *p;
+		if (conv == L's')
+			conv = L'S';
+		else if (conv == L'S')
+			conv = L's';
+		out.push_back(conv);
+	}
+	return out;
+}
+#endif
+
 void LogHelper::log(const char* file, int line, const void* caller, bool trace, const wchar_t* format, ...)
 {
 #ifdef _WIN32
@@ -154,7 +194,8 @@ void LogHelper::log(const char* file, int line, const void* caller, bool trace, 
 
 	va_list varArgs;
 	va_start(varArgs, format);
-	vfwprintf(fp, format, varArgs);
+	std::wstring fmt = swapStringSpecifiers(format);
+	vfwprintf(fp, fmt.c_str(), varArgs);
 	va_end(varArgs);
 
 	fwprintf(fp, L"\n");
