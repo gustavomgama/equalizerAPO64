@@ -60,6 +60,32 @@ QJsonArray dumpObjects()
 	return document.array();
 }
 
+// Reads WirePlumber's default node name for sinks/sources from the "default"
+// metadata object, rather than assuming the first node is the default.
+QString defaultNodeName(const QJsonArray& objects, bool input)
+{
+	const QString key = input ? QStringLiteral("default.audio.source")
+	                          : QStringLiteral("default.audio.sink");
+	for (const QJsonValue& value : objects)
+	{
+		QJsonObject object = value.toObject();
+		if (object.value(QStringLiteral("type")).toString() != QStringLiteral("PipeWire:Interface:Metadata"))
+			continue;
+		QJsonObject props = object.value(QStringLiteral("props")).toObject();
+		if (props.value(QStringLiteral("metadata.name")).toString() != QStringLiteral("default"))
+			continue;
+		for (const QJsonValue& entryValue : object.value(QStringLiteral("metadata")).toArray())
+		{
+			QJsonObject entry = entryValue.toObject();
+			if (entry.value(QStringLiteral("key")).toString() != key)
+				continue;
+			QJsonObject v = entry.value(QStringLiteral("value")).toObject();
+			return v.value(QStringLiteral("name")).toString();
+		}
+	}
+	return QString();
+}
+
 shared_ptr<DeviceAPOInfo> makeDevice(const QString& connectionName, const QString& deviceName,
 	const QString& guid, bool input, bool defaultDevice, unsigned channelCount,
 	unsigned sampleRate, unsigned long channelMask)
@@ -92,6 +118,7 @@ vector<shared_ptr<AbstractAPOInfo>> DeviceAPOInfo::loadAllInfos(bool input)
 	vector<shared_ptr<AbstractAPOInfo>> result;
 
 	const QJsonArray objects = dumpObjects();
+	const QString defaultName = defaultNodeName(objects, input);
 	bool foundDefault = false;
 	for (const QJsonValue& value : objects)
 	{
@@ -121,7 +148,10 @@ vector<shared_ptr<AbstractAPOInfo>> DeviceAPOInfo::loadAllInfos(bool input)
 			channelCount = (unsigned)channels.toInt();
 		unsigned sampleRate = 48000;
 
-		const bool isDefault = !foundDefault;
+		// Prefer the real default from metadata; fall back to the first node.
+		const bool isDefault = !defaultName.isEmpty()
+			? nodeName == defaultName
+			: !foundDefault;
 		foundDefault = true;
 
 		result.push_back(makeDevice(description, nodeName, nodeName, input, isDefault,
