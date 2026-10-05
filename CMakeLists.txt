@@ -8,6 +8,13 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
 
+# Optional sanitizer build for development: -DEQAPO_SANITIZE=ON
+option(EQAPO_SANITIZE "Build with AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
+if(EQAPO_SANITIZE)
+  add_compile_options(-fsanitize=address,undefined -fno-omit-frame-pointer -g)
+  add_link_options(-fsanitize=address,undefined)
+endif()
+
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(FFTW3 REQUIRED fftw3)
 pkg_check_modules(SNDFILE REQUIRED sndfile)

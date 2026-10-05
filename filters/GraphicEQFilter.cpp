@@ -98,7 +98,7 @@ void GraphicEQFilter::initializeFilters(unsigned frameCount)
 		hcInitSingle(&filters[i], buf, filterLength, frameCount, 1);
 	}
 
-	delete buf;
+	delete[] buf;
 }
 
 // Minimum phase spectrum from coefficients
