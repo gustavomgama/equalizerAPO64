@@ -80,6 +80,17 @@ static inline void Sleep(unsigned ms) {
 #define __forceinline inline __attribute__((always_inline))
 #endif
 
+// aeffectx.h declares function pointers with __cdecl; GCC/x86-64 has a single
+// calling convention, so it is empty here.
+#ifndef __cdecl
+#define __cdecl
+#endif
+
+// Minimal handle typedefs used by the VST host classes.
+typedef void* HWND;
+typedef void* HMODULE;
+typedef void* HINSTANCE;
+
 #define swscanf_s swscanf
 
 // Bounded string copy matching the strcpy_s contract used by the VST code.

@@ -18,14 +18,72 @@
 */
 
 #include "stdafx.h"
+#ifdef _WIN32
 #include <wincrypt.h>
+#else
+#include <vector>
+#endif
 #include <inttypes.h>
 #include "StringHelper.h"
-#include "../Version.h"
+#include "../version.h"
 #include "VSTPluginLibrary.h"
 #include "VSTPluginInstance.h"
 
 using namespace std;
+
+#ifndef _WIN32
+// Portable base64, replacing the wincrypt calls used for plugin chunk state.
+static const char* kBase64Chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+static std::string base64Encode(const unsigned char* data, size_t len)
+{
+	std::string out;
+	int val = 0, bits = -6;
+	for (size_t i = 0; i < len; ++i)
+	{
+		val = (val << 8) + data[i];
+		bits += 8;
+		while (bits >= 0)
+		{
+			out.push_back(kBase64Chars[(val >> bits) & 0x3F]);
+			bits -= 6;
+		}
+	}
+	if (bits > -6)
+		out.push_back(kBase64Chars[((val << 8) >> (bits + 8)) & 0x3F]);
+	while (out.size() % 4)
+		out.push_back('=');
+	return out;
+}
+
+static std::vector<unsigned char> base64Decode(const std::string& s)
+{
+	auto value = [](char c) -> int {
+		if (c >= 'A' && c <= 'Z') return c - 'A';
+		if (c >= 'a' && c <= 'z') return c - 'a' + 26;
+		if (c >= '0' && c <= '9') return c - '0' + 52;
+		if (c == '+') return 62;
+		if (c == '/') return 63;
+		return -1;
+	};
+	std::vector<unsigned char> out;
+	int val = 0, bits = -8;
+	for (char c : s)
+	{
+		int d = value(c);
+		if (d < 0)
+			continue;
+		val = (val << 6) + d;
+		bits += 6;
+		if (bits >= 0)
+		{
+			out.push_back((unsigned char)((val >> bits) & 0xFF));
+			bits -= 8;
+		}
+	}
+	return out;
+}
+#endif
 
 #define equalizerApoVSTID VST_FOURCC('E', 'A', 'P', 'O');
 
@@ -146,8 +204,10 @@ bool VSTPluginInstance::initialize()
 {
 	bool result = true;
 
+#ifdef _WIN32
 	__try
 	{
+#endif
 		effect = library->VSTPluginMain(callback);
 		effect->host_internal = this;
 		if (effect->magic_number == VST_MAGICNUMBER)
@@ -160,11 +220,13 @@ bool VSTPluginInstance::initialize()
 		{
 			effect = NULL;
 		}
+#ifdef _WIN32
 	}
 	__except (EXCEPTION_EXECUTE_HANDLER)
 	{
 		result = false;
 	}
+#endif
 
 	return result;
 }
@@ -281,12 +343,19 @@ void VSTPluginInstance::writeToEffect(const std::wstring& chunkData, const std::
 	{
 		if (chunkData != L"")
 		{
+#ifdef _WIN32
 			DWORD bufSize = 0;
 			CryptStringToBinaryW(chunkData.c_str(), 0, CRYPT_STRING_BASE64, NULL, &bufSize, NULL, NULL);
 			BYTE* buf = new BYTE[bufSize];
 			if (CryptStringToBinaryW(chunkData.c_str(), 0, CRYPT_STRING_BASE64, buf, &bufSize, NULL, NULL) == TRUE)
 				effect->control(effect, VST_EFFECT_OPCODE_SET_CHUNK_DATA, 1, bufSize, buf, 0.0f);
 			delete[] buf;
+#else
+			std::string b64(chunkData.begin(), chunkData.end());
+			std::vector<unsigned char> buf = base64Decode(b64);
+			if (!buf.empty())
+				effect->control(effect, VST_EFFECT_OPCODE_SET_CHUNK_DATA, 1, (intptr_t)buf.size(), buf.data(), 0.0f);
+#endif
 		}
 	}
 	else
@@ -314,6 +383,7 @@ void VSTPluginInstance::readFromEffect(std::wstring& chunkData, std::unordered_m
 
 	if (effect->flags & VST_EFFECT_FLAG_CHUNKS)
 	{
+#ifdef _WIN32
 		BYTE* chunk = NULL;
 		int size = (int)effect->control(effect, VST_EFFECT_OPCODE_GET_CHUNK_DATA, 1, 0, &chunk, 0.0f);
 		DWORD stringLength = 0;
@@ -322,6 +392,15 @@ void VSTPluginInstance::readFromEffect(std::wstring& chunkData, std::unordered_m
 		if (CryptBinaryToStringW(chunk, size, CRYPT_STRING_BASE64 | CRYPT_STRING_NOCRLF, string, &stringLength) == TRUE)
 			chunkData = string;
 		delete[] string;
+#else
+		void* chunk = NULL;
+		int size = (int)effect->control(effect, VST_EFFECT_OPCODE_GET_CHUNK_DATA, 1, 0, &chunk, 0.0f);
+		if (chunk != NULL && size > 0)
+		{
+			std::string b64 = base64Encode((const unsigned char*)chunk, (size_t)size);
+			chunkData.assign(b64.begin(), b64.end());
+		}
+#endif
 	}
 	else
 	{

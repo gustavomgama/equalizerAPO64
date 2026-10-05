@@ -18,7 +18,12 @@
 */
 
 #include "stdafx.h"
+#ifdef _WIN32
 #include "RegistryHelper.h"
+#else
+#include <dlfcn.h>
+#include <cstdlib>
+#endif
 #include "LogHelper.h"
 #include "VSTPluginLibrary.h"
 
@@ -51,8 +56,15 @@ wstring VSTPluginLibrary::getDefaultPluginPath()
 {
 	if (defaultPluginPath == L"")
 	{
+#ifdef _WIN32
 		wstring installPath = RegistryHelper::readValue(APP_REGPATH, L"InstallPath");
 		defaultPluginPath = installPath + L"\\VSTPlugins";
+#else
+		const char* home = getenv("HOME");
+		std::string h = home ? home : "/tmp";
+		defaultPluginPath.assign(h.begin(), h.end());
+		defaultPluginPath += L"/.vst";
+#endif
 	}
 
 	return defaultPluginPath;
@@ -65,7 +77,13 @@ std::wstring VSTPluginLibrary::getLibPath()
 
 bool VSTPluginLibrary::loadFunctions()
 {
+#ifdef _WIN32
 	VSTPluginMain = (vstPluginMain)GetProcAddress(module, "VSTPluginMain");
+#else
+	VSTPluginMain = (vstPluginMain)dlsym(module, "VSTPluginMain");
+	if (VSTPluginMain == NULL)
+		VSTPluginMain = (vstPluginMain)dlsym(module, "main");
+#endif
 
 	return VSTPluginMain != NULL;
 }

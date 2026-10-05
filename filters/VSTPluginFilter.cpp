@@ -118,8 +118,10 @@ std::vector<std::wstring> VSTPluginFilter::initialize(float sampleRate, unsigned
 
 void VSTPluginFilter::prepareForProcessing(float sampleRate, unsigned maxFrameCount)
 {
+#ifdef _WIN32
 	__try
 	{
+#endif
 		for (unsigned i = 0; i < effectCount; i++)
 		{
 			VSTPluginInstance* effect = effects[i];
@@ -132,12 +134,14 @@ void VSTPluginFilter::prepareForProcessing(float sampleRate, unsigned maxFrameCo
 			effect->writeToEffect(chunkData, paramMap);
 			effect->startProcessing();
 		}
+#ifdef _WIN32
 	}
 	__except (EXCEPTION_EXECUTE_HANDLER)
 	{
 		LogF(L"The VST plugin %s crashed while preparing for processing.", libPath.c_str());
 		skipProcessing = true;
 	}
+#endif
 }
 
 #pragma AVRT_CODE_BEGIN
@@ -155,8 +159,10 @@ void VSTPluginFilter::process(double** output, double** input, unsigned frameCou
 		return;
 	}
 
+#ifdef _WIN32
 	__try
 	{
+#endif
 		unsigned channelOffset = 0;
 		unsigned emptyChannelIndex = 0;
 		for (unsigned i = 0; i < effectCount; i++)
@@ -267,6 +273,7 @@ void VSTPluginFilter::process(double** output, double** input, unsigned frameCou
 			else
 				delayBufferOffset = (delayBufferOffset + frameCount) % delayBufferLength;
 		}
+#ifdef _WIN32
 	}
 	__except (EXCEPTION_EXECUTE_HANDLER)
 	{
@@ -279,6 +286,7 @@ void VSTPluginFilter::process(double** output, double** input, unsigned frameCou
 		for (unsigned i = 0; i < channelCount; i++)
 			memcpy(output[i], input[i], frameCount * sizeof(double));
 	}
+#endif
 }
 #pragma AVRT_CODE_END
 

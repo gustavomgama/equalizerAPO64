@@ -66,8 +66,8 @@
 #include "filters/IncludeFilterFactory.h"
 #include "filters/ConvolutionFilterFactory.h"
 #include "filters/GraphicEQFilterFactory.h"
-#ifdef _WIN32
 #include "filters/VSTPluginFilterFactory.h"
+#ifdef _WIN32
 #include "filters/loudnessCorrection/LoudnessCorrectionFilterFactory.h"
 #endif
 
@@ -127,8 +127,8 @@ FilterEngine::FilterEngine()
 	factories.push_back(new CopyFilterFactory());
 	factories.push_back(new ConvolutionFilterFactory());
 	factories.push_back(new GraphicEQFilterFactory());
-#ifdef _WIN32
 	factories.push_back(new VSTPluginFilterFactory());
+#ifdef _WIN32
 	factories.push_back(new LoudnessCorrectionFilterFactory());
 #endif
 }

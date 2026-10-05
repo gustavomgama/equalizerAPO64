@@ -41,5 +41,7 @@ protected:
 	HMODULE module = NULL;
 
 private:
+#ifdef _WIN32
 	unsigned short getFileArchitecture(const std::wstring& filePath);
+#endif
 };

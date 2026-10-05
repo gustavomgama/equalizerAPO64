@@ -66,6 +66,11 @@ add_library(eqapo_core STATIC
   filters/PreampFilter.cpp
   filters/PreampFilterFactory.cpp
   filters/StageFilterFactory.cpp
+  filters/VSTPluginFilter.cpp
+  filters/VSTPluginFilterFactory.cpp
+  helpers/VSTPluginInstance.cpp
+  helpers/VSTPluginLibrary.cpp
+  helpers/AbstractLibrary.cpp
   libHybridConv-0.1.1/libHybridConv_eapo.cpp
 )
 target_include_directories(eqapo_core PUBLIC
@@ -106,3 +111,8 @@ add_executable(eqapo-host linux/host/main.cpp)
 target_link_libraries(eqapo-host PRIVATE eqapo_core ${PIPEWIRE_LIBRARIES})
 target_include_directories(eqapo-host PRIVATE ${PIPEWIRE_INCLUDE_DIRS})
 add_test(NAME host_e2e COMMAND bash ${CMAKE_SOURCE_DIR}/tests/run_host_e2e.sh $<TARGET_FILE:eqapo-host>)
+
+add_library(eqapo-vst-stub SHARED linux/vst-test/stub_plugin.cpp)
+target_include_directories(eqapo-vst-stub PRIVATE ${CMAKE_SOURCE_DIR})
+set_target_properties(eqapo-vst-stub PROPERTIES PREFIX "")
+add_test(NAME vst_e2e COMMAND bash ${CMAKE_SOURCE_DIR}/tests/run_vst_e2e.sh $<TARGET_FILE:eqapo-null> $<TARGET_FILE:eqapo-vst-stub>)

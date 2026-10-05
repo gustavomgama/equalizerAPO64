@@ -18,6 +18,11 @@
 */
 
 #include "stdafx.h"
+#ifdef _WIN32
+#include <Shlwapi.h>
+#else
+#include <filesystem>
+#endif
 #include "helpers/StringHelper.h"
 #include "helpers/VSTPluginLibrary.h"
 #include "helpers/LogHelper.h"
@@ -44,6 +49,7 @@ vector<IFilter*> VSTPluginFilterFactory::createFilter(const wstring& configPath,
 			if (key == L"Library")
 			{
 				wstring libPath;
+#ifdef _WIN32
 				if (PathIsRelativeW(value.c_str()))
 				{
 					wchar_t filePath[MAX_PATH];
@@ -58,6 +64,14 @@ vector<IFilter*> VSTPluginFilterFactory::createFilter(const wstring& configPath,
 				}
 				else
 					libPath = value;
+#else
+				{
+					std::filesystem::path p(value);
+					if (p.is_relative())
+						p = std::filesystem::path(VSTPluginLibrary::getDefaultPluginPath()) / p;
+					libPath = p.wstring();
+				}
+#endif
 
 				library = VSTPluginLibrary::getInstance(libPath);
 			}

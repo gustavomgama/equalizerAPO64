@@ -18,7 +18,12 @@
 */
 
 #include "stdafx.h"
+#ifdef _WIN32
 #include <Imagehlp.h>
+#else
+#include <dlfcn.h>
+#include <sys/stat.h>
+#endif
 #include "AbstractLibrary.h"
 #include "helpers/LogHelper.h"
 
@@ -28,6 +33,7 @@ AbstractLibrary::~AbstractLibrary()
 {
 	if (module != NULL)
 	{
+#ifdef _WIN32
 		wchar_t path[MAX_PATH];
 		GetModuleFileNameW(module, path, MAX_PATH);
 
@@ -35,6 +41,10 @@ AbstractLibrary::~AbstractLibrary()
 		module = NULL;
 
 		TraceF(L"Unloaded library %s", path);
+#else
+		dlclose(module);
+		module = NULL;
+#endif
 	}
 }
 
@@ -43,6 +53,7 @@ int AbstractLibrary::initialize()
 	if (module == NULL)
 	{
 		wstring libPath = getLibPath();
+#ifdef _WIN32
 		if (GetFileAttributesW(libPath.c_str()) == INVALID_FILE_ATTRIBUTES)
 			return FILE_NOT_FOUND;
 		module = LoadLibraryW(libPath.c_str());
@@ -60,10 +71,26 @@ int AbstractLibrary::initialize()
 
 			return LOADING_FAILED;
 		}
+#else
+		std::string narrow(libPath.begin(), libPath.end());
+		struct stat st;
+		if (stat(narrow.c_str(), &st) != 0)
+			return FILE_NOT_FOUND;
+		module = dlopen(narrow.c_str(), RTLD_NOW | RTLD_LOCAL);
+		if (module == NULL)
+		{
+			TraceF(L"Could not load library %s: %S", libPath.c_str(), dlerror());
+			return LOADING_FAILED;
+		}
+#endif
 
 		if (!loadFunctions())
 		{
+#ifdef _WIN32
 			FreeLibrary(module);
+#else
+			dlclose(module);
+#endif
 			module = NULL;
 			return FUNCTIONS_MISSING;
 		}
@@ -86,6 +113,7 @@ int AbstractLibrary::customInitialize()
 	return 0;
 }
 
+#ifdef _WIN32
 unsigned short AbstractLibrary::getFileArchitecture(const wstring& filePath)
 {
 	unsigned short result = 0;
@@ -111,3 +139,4 @@ unsigned short AbstractLibrary::getFileArchitecture(const wstring& filePath)
 
 	return result;
 }
+#endif
