@@ -34,4 +34,14 @@ inline std::string chooseOutputTarget(const std::string& explicitTarget,
 			return sink;
 	return {};
 }
+
+// The engine deviceString for a resolved output sink. The Editor's device
+// picker writes a `Device:` pattern of "<description> <name> <name>"; the
+// virtual sink name is included too so configs written against either
+// identity still match.
+inline std::wstring deviceStringFor(const std::wstring& description,
+	const std::wstring& name, const std::wstring& self)
+{
+	return name + L" " + description + L" " + name + L" " + self;
+}
 }

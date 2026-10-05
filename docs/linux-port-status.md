@@ -42,10 +42,12 @@ to apply the chain system-wide. The host hot-reloads
    (WirePlumber). It works when `wpctl` is present; the value is cached for
    500 ms to avoid spawning a process on every poll. A native libpipewire
    reader is a possible follow-up.
-2. **`Device:` blocks** match against the Linux sink name (`EqualizerAPO`).
-   Use `Device: all` or `Device: EqualizerAPO`; a Windows device name such as
-   `Speakers` will not match and the block is skipped (the engine logs
-   this at trace level). This is the main config-portability gotcha.
+2. **`Device:` blocks** match the output device the host forwards to (the
+   playback device the Editor lists, e.g. `Starship/Matisse HD Audio
+   Controller Analog Stereo ...`); the virtual sink name `EqualizerAPO` also
+   matches, and `Device: all` matches everything. A Windows device name such
+   as `Speakers` will not match and the block is skipped (the engine logs this
+   at trace level).
    The host pins its output stream to a real hardware sink (resolved from
    WirePlumber's default, excluding its own virtual sink), so setting
    `EqualizerAPO` as the default output does not create a feedback loop.

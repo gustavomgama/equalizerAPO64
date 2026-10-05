@@ -231,19 +231,29 @@ std::string defaultSinkName()
 	return end == std::string::npos ? std::string() : text.substr(n, end - n);
 }
 
-// Every Audio/Sink node.name currently visible, from `pw-cli ls Node`.
-std::vector<std::string> listSinkNames()
+struct Sink
 {
-	std::vector<std::string> sinks;
+	std::string name;
+	std::string description;
+};
+
+// Every Audio/Sink currently visible, from `pw-cli ls Node`.
+std::vector<Sink> listSinks()
+{
+	std::vector<Sink> sinks;
 	const std::string text = runCapture("pw-cli ls Node 2>/dev/null");
 	bool isSink = false;
-	std::string name;
+	Sink current;
 	size_t pos = 0;
 	auto flush = [&]() {
-		if (isSink && !name.empty())
-			sinks.push_back(name);
+		if (isSink && !current.name.empty())
+		{
+			if (current.description.empty())
+				current.description = current.name;
+			sinks.push_back(current);
+		}
 		isSink = false;
-		name.clear();
+		current = Sink();
 	};
 	while (pos < text.size())
 	{
@@ -264,7 +274,9 @@ std::vector<std::string> listSinkNames()
 				if (prop == "media.class" && val == "Audio/Sink")
 					isSink = true;
 				else if (prop == "node.name")
-					name = val;
+					current.name = val;
+				else if (prop == "node.description")
+					current.description = val;
 			}
 		}
 		if (nl == std::string::npos)
@@ -273,6 +285,15 @@ std::vector<std::string> listSinkNames()
 	}
 	flush();
 	return sinks;
+}
+
+std::vector<std::string> sinkNames(const std::vector<Sink>& sinks)
+{
+	std::vector<std::string> names;
+	names.reserve(sinks.size());
+	for (const Sink& s : sinks)
+		names.push_back(s.name);
+	return names;
 }
 
 const struct spa_pod* makeFormat(struct spa_pod_builder* b, unsigned channels, unsigned rate)
@@ -346,11 +367,33 @@ int main(int argc, char** argv)
 	std::wstring cfg;
 	if (!configPath.empty())
 		cfg.assign(configPath.begin(), configPath.end());
-	// Give the engine a device identity so `Device:` blocks can match on Linux
-	// (use `Device: all` or `Device: <sink name>`; Windows device names will
-	// not match).
-	std::wstring wName(nodeName.begin(), nodeName.end());
-	host.engine.setDeviceInfo(false, true, wName, L"", L"", wName);
+	// Resolve the real output sink. Leaving the output target-less would make
+	// WirePlumber follow the default sink — this host's own virtual sink once
+	// the user selects it — creating a feedback loop.
+	std::vector<Sink> sinks;
+	std::string outTarget = target;
+	for (int attempt = 0; outTarget.empty() && attempt < 15; ++attempt)
+	{
+		sinks = listSinks();
+		outTarget = eqapo::chooseOutputTarget(target, nodeName, defaultSinkName(), sinkNames(sinks));
+		if (outTarget.empty())
+			std::this_thread::sleep_for(std::chrono::milliseconds(200));
+	}
+	std::string outDescription = outTarget;
+	for (const Sink& s : sinks)
+		if (s.name == outTarget)
+			outDescription = s.description;
+
+	// The engine's device identity is the device actually being equalized: the
+	// resolved output sink, i.e. what the Editor lists as a playback device.
+	// This makes `Device:` blocks written from the Editor's device picker match.
+	// The virtual sink name is kept too, for configs written against it.
+	std::wstring wTarget(outTarget.begin(), outTarget.end());
+	std::wstring wDesc(outDescription.begin(), outDescription.end());
+	std::wstring wSelf(nodeName.begin(), nodeName.end());
+	std::wstring wName = outTarget.empty() ? wSelf : wTarget;
+	std::wstring wDeviceString = outTarget.empty() ? wSelf : eqapo::deviceStringFor(wDesc, wTarget, wSelf);
+	host.engine.setDeviceInfo(false, true, wName, wDesc, wName, wDeviceString);
 	host.engine.initialize((float)rate, channels, channels, channels, 0, kMaxFrames, cfg);
 
 	host.loop = pw_main_loop_new(nullptr);
@@ -384,16 +427,8 @@ int main(int argc, char** argv)
 		PW_KEY_NODE_NAME, "eqapo_output",
 		PW_KEY_APP_NAME, "EqualizerAPO",
 		nullptr);
-	// Pin the output to a real sink. If we left it target-less, WirePlumber
-	// would follow the default sink — which is this host's own virtual sink
-	// once the user selects it, creating a feedback loop.
-	std::string outTarget = target;
-	for (int attempt = 0; outTarget.empty() && attempt < 15; ++attempt)
-	{
-		outTarget = eqapo::chooseOutputTarget(target, nodeName, defaultSinkName(), listSinkNames());
-		if (outTarget.empty())
-			std::this_thread::sleep_for(std::chrono::milliseconds(200));
-	}
+	// Pin the resolved sink (chosen above) so a later default change cannot
+	// pull this output back into the host's own virtual sink.
 	if (!outTarget.empty())
 		pw_properties_set(outProps, PW_KEY_TARGET_OBJECT, outTarget.c_str());
 	std::fprintf(stderr, "eqapo-host: output target '%s'\n",

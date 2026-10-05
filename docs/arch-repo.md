@@ -83,6 +83,8 @@ Configure the chain with `eqapo-editor`, then save — the host picks it up live
   them as native `.so`. Native Linux VST2 plugins load as-is.
 - A crashing VST plugin takes down `eqapo-host`; systemd restarts it (~2 s of
   dropped audio). Treat third-party plugins as trusted code.
-- `Device:` blocks match the Linux sink name (`EqualizerAPO`); a Windows device
-  name such as `Speakers` will not match. Use `Device: all`.
+- `Device:` blocks match the output device the host forwards to (the playback
+  device listed in the Editor); `EqualizerAPO` also matches, and
+  `Device: all` matches everything. Windows device names such as `Speakers` do
+  not match.
 - See `docs/linux-port-status.md` for the full status and limitation list.

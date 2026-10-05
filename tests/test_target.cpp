@@ -11,11 +11,13 @@
 #include <string>
 #include <vector>
 
+#include "filters/DeviceFilterFactory.h"
 #include "linux/host/target.h"
 
 int main()
 {
 	using eqapo::chooseOutputTarget;
+	using eqapo::deviceStringFor;
 
 	// An explicit --target always wins.
 	assert(chooseOutputTarget("hw", "self", "self", {"self", "hw"}) == "hw");
@@ -32,6 +34,18 @@ int main()
 
 	// No default: fall back to the first non-self sink.
 	assert(chooseOutputTarget("", "self", "", {"self", "hw"}) == "hw");
+
+	// The Editor writes `Device: <description> <name> <name>` for the sink the
+	// user picked; the host's identity must match it (the bug where only the
+	// EqualizerAPO entry worked).
+	const std::wstring desc = L"Starship/Matisse HD Audio Controller Analog Stereo";
+	const std::wstring name = L"alsa_output.pci-0000_08_00.4.analog-stereo";
+	const std::wstring self = L"EqualizerAPO";
+	const std::wstring hostString = deviceStringFor(desc, name, self);
+	assert(DeviceFilterFactory::matchDevice(hostString, desc + L" " + name + L" " + name));
+	assert(DeviceFilterFactory::matchDevice(hostString, L"all"));
+	assert(DeviceFilterFactory::matchDevice(hostString, L"EqualizerAPO"));
+	assert(!DeviceFilterFactory::matchDevice(hostString, L"Speakers"));
 
 	std::printf("test_target: all checks passed\n");
 	return 0;
