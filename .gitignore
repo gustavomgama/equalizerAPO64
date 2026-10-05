@@ -243,3 +243,10 @@ paket-files/
 # JetBrains Rider
 .idea/
 *.sln.iml
+
+# Linux CMake build directory
+/build/
+
+# OpenCode loop runtime state
+.opencode/
+progress.md

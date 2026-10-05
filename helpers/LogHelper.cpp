@@ -1,5 +1,5 @@
 /*
-    This file is part of EqualizerAPO, a system-wide equalizer.
+    This file is part of Equalizer APO, a system-wide equalizer.
     Copyright (C) 2012  Jonas Thedering
 
     This program is free software; you can redistribute it and/or modify
@@ -19,10 +19,15 @@
 
 #include "stdafx.h"
 #include <cstdarg>
+#ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
-
 #include "RegistryHelper.h"
+#else
+#include <ctime>
+#include "ConfigPathHelper.h"
+#endif
+
 #include "LogHelper.h"
 
 using namespace std;
@@ -36,6 +41,7 @@ bool LogHelper::useConsoleColors = false;
 
 void LogHelper::log(const char* file, int line, const void* caller, bool trace, const wchar_t* format, ...)
 {
+#ifdef _WIN32
 	if (!initialized)
 	{
 		// Do not try to initialize again, even in case of error
@@ -111,6 +117,53 @@ void LogHelper::log(const char* file, int line, const void* caller, bool trace, 
 		fclose(fp);
 	else
 		fflush(fp);
+#else
+	if (!initialized)
+	{
+		// Do not try to initialize again, even in case of error
+		initialized = true;
+		logPath = ConfigPathHelper::getStateDir() + L"/EqualizerAPO.log";
+		enableTrace = true;
+	}
+
+	if (trace && !enableTrace)
+		return;
+
+	FILE* fp;
+	if (presetFP == NULL)
+	{
+		string narrow(logPath.begin(), logPath.end());
+		fp = fopen(narrow.c_str(), "at");
+		if (fp == NULL)
+			return;
+	}
+	else
+	{
+		fp = presetFP;
+	}
+
+	if (!compact)
+	{
+		time_t now = time(NULL);
+		struct tm lt;
+		localtime_r(&now, &lt);
+		fwprintf(fp, L"%04d-%02d-%02d %02d:%02d:%02d %s (%s:%d): ",
+			lt.tm_year + 1900, lt.tm_mon + 1, lt.tm_mday, lt.tm_hour, lt.tm_min, lt.tm_sec,
+			trace ? L"TRACE" : L"LOG", file, line);
+	}
+
+	va_list varArgs;
+	va_start(varArgs, format);
+	vfwprintf(fp, format, varArgs);
+	va_end(varArgs);
+
+	fwprintf(fp, L"\n");
+
+	if (presetFP == NULL)
+		fclose(fp);
+	else
+		fflush(fp);
+#endif
 }
 
 void LogHelper::reset()

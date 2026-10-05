@@ -1,5 +1,5 @@
 /*
-    This file is part of EqualizerAPO, a system-wide equalizer.
+    This file is part of Equalizer APO, a system-wide equalizer.
     Copyright (C) 2013  Jonas Thedering
 
     This program is free software; you can redistribute it and/or modify
@@ -18,6 +18,10 @@
 */
 
 #include "stdafx.h"
+#include "LogHelper.h"
+#include "MemoryHelper.h"
+
+#ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #ifdef _DEBUG
@@ -32,9 +36,6 @@
 #undef AERT_Allocate
 #undef AERT_Free
 #endif
-
-#include "LogHelper.h"
-#include "MemoryHelper.h"
 
 #ifdef USE_WINDDK
 // someone forgot to add the __stdcall/WINAPI modifier to BaseAudioProcessingObject.h, so we can't use the existing declarations
@@ -111,3 +112,30 @@ void MemoryHelper::free(void* ptr)
 #endif
 #endif
 }
+#else
+// Linux / POSIX: same 16-byte alignment contract as the Windows implementation.
+void* MemoryHelper::alloc(size_t size)
+{
+	void* memory = malloc(size + 32);
+	if (memory == NULL)
+	{
+		LogFStatic(L"Allocation of %d bytes failed.", size);
+		return NULL;
+	}
+
+	size_t offset = 16 - ((size_t)memory) % 16;
+	void* ptr = ((char*)memory) + offset;
+	((char*)ptr)[-1] = (char)offset;
+
+	return ptr;
+}
+
+void MemoryHelper::free(void* ptr)
+{
+	if (ptr == NULL)
+		return;
+
+	char offset = ((char*)ptr)[-1];
+	::free(((char*)ptr) - offset);
+}
+#endif

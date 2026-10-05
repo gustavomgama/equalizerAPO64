@@ -22,18 +22,24 @@
 #include <climits>
 #include <cstdarg>
 #include <cstdio>
+#include <cstring>
 #include <string>
 #include <vector>
 #include <sstream>
 #include <fstream>
 #include <algorithm>
 #include <exception>
+#include <memory>
 #include <unordered_map>
 #include <unordered_set>
 #include <regex>
+#if defined(_WIN32)
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <Shlwapi.h>
 #include <Ks.h>
 #include <KsMedia.h>
+#else
+#include "linux/wincompat.h"
+#endif
 #include "helpers/ScopeGuard.h"

@@ -1,6 +1,5 @@
 /*
     This file is part of Equalizer APO, a system-wide equalizer.
-    Copyright (C) 2012  Jonas Thedering
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,53 +18,14 @@
 
 #pragma once
 
-#ifdef _WIN32
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
+#include <string>
 
-class PrecisionTimer
+// Linux-only helper for locating the EqualizerAPO configuration and state
+// directories. The Windows build continues to use RegistryHelper.
+class ConfigPathHelper
 {
-	LARGE_INTEGER freq;
-	LARGE_INTEGER startCount{};
-
 public:
-	PrecisionTimer()
-	{
-		QueryPerformanceFrequency(&freq);
-	}
-
-	void start()
-	{
-		QueryPerformanceCounter(&startCount);
-	}
-
-	double stop()
-	{
-		LARGE_INTEGER stopCount;
-		QueryPerformanceCounter(&stopCount);
-
-		return double(stopCount.QuadPart - startCount.QuadPart) / freq.QuadPart;
-	}
+	static std::wstring getConfigDir();
+	static std::wstring getConfigFile();
+	static std::wstring getStateDir();
 };
-#else
-#include <chrono>
-
-class PrecisionTimer
-{
-	std::chrono::steady_clock::time_point startCount;
-
-public:
-	PrecisionTimer() = default;
-
-	void start()
-	{
-		startCount = std::chrono::steady_clock::now();
-	}
-
-	double stop()
-	{
-		auto stopCount = std::chrono::steady_clock::now();
-		return std::chrono::duration<double>(stopCount - startCount).count();
-	}
-};
-#endif

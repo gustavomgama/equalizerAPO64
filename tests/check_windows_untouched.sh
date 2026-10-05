@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(git rev-parse --show-toplevel)"
+
+# 1. Windows-only build files must never be modified by this work.
+bad=$(git status --porcelain | awk '{print $2}' | grep -E '\.(vcxproj|sln|bat|pro|rc)$' || true)
+if [ -n "$bad" ]; then
+  echo "FAIL: Windows build files modified:"
+  echo "$bad"
+  exit 1
+fi
+
+# 2. Any modified shared source that originally contained Windows-specific
+#    code must still contain a #ifdef _WIN32 guard.
+fail=0
+for f in $(git status --porcelain | awk '{print $2}' | grep -E '\.(cpp|h)$' || true); do
+  case "$f" in
+    helpers/ConfigPathHelper.*|linux/*|tests/*) continue ;;
+  esac
+  if git show "HEAD:$f" 2>/dev/null | grep -qE 'windows\.h|_WIN32|CreateFile|LoadLibrary|CRITICAL_SECTION|CreateSemaphore|QueryPerformanceCounter|IMMDevice'; then
+    if ! grep -q '_WIN32' "$f"; then
+      echo "FAIL: Windows guard missing in modified file $f"
+      fail=1
+    fi
+  fi
+done
+[ "$fail" -eq 0 ] || exit 1
+echo "OK: Windows port untouched"
