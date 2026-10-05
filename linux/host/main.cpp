@@ -216,6 +216,7 @@ int main(int argc, char** argv)
 {
 	std::string configPath;
 	std::string nodeName = "EqualizerAPO";
+	std::string target;
 	unsigned rate = 48000;
 	unsigned channels = 2;
 
@@ -225,6 +226,8 @@ int main(int argc, char** argv)
 			configPath = argv[++i];
 		else if (!std::strcmp(argv[i], "--name") && i + 1 < argc)
 			nodeName = argv[++i];
+		else if (!std::strcmp(argv[i], "--target") && i + 1 < argc)
+			target = argv[++i];
 		else if (!std::strcmp(argv[i], "--rate") && i + 1 < argc)
 			rate = (unsigned)std::atoi(argv[++i]);
 		else if (!std::strcmp(argv[i], "--channels") && i + 1 < argc)
@@ -236,9 +239,10 @@ int main(int argc, char** argv)
 		}
 		else if (!std::strcmp(argv[i], "--help") || !std::strcmp(argv[i], "-h"))
 		{
-			std::printf("usage: eqapo-host [--config <file>] [--name <sink>] [--rate <hz>] [--channels <n>]\n"
+			std::printf("usage: eqapo-host [--config <file>] [--name <sink>] [--target <node>] [--rate <hz>] [--channels <n>]\n"
 			            "  --config    one-shot config file (default: ~/.config/equalizerapo/config.txt, hot-reloaded)\n"
 			            "  --name      virtual sink node name (default: EqualizerAPO)\n"
+			            "  --target    output node to forward to (default: system default sink)\n"
 			            "  --rate      sample rate (default: 48000)\n"
 			            "  --channels  channel count (default: 2)\n"
 			            "  --version   print version and exit\n");
@@ -297,6 +301,8 @@ int main(int argc, char** argv)
 		PW_KEY_NODE_NAME, "eqapo_output",
 		PW_KEY_APP_NAME, "EqualizerAPO",
 		nullptr);
+	if (!target.empty())
+		pw_properties_set(outProps, PW_KEY_NODE_TARGET, target.c_str());
 	struct pw_stream_events outEvents = {};
 	outEvents.version = PW_VERSION_STREAM_EVENTS;
 	outEvents.process = onOutProcess;

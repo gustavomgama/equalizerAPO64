@@ -70,6 +70,8 @@ host watches `~/.config/equalizerapo/config.txt` and hot-reloads on change.
     ./build/eqapo-host                 # virtual sink "EqualizerAPO", 48 kHz stereo
     ./build/eqapo-host --config FILE   # one-shot config file (no hot-reload)
     ./build/eqapo-host --name MyEQ --rate 48000 --channels 2
+    ./build/eqapo-host --target my_sink   # forward to a specific output node
+    ./build/eqapo-host --help             # all options
 
 To route everything through the EQ:
 
