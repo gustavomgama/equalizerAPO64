@@ -6,4 +6,4 @@ Comment=Configure the EqualizerAPO filter chain
 Exec=eqapo-editor
 Icon=audio-card
 Terminal=false
-Categories=Audio;AudioVideo;Settings;
+Categories=AudioVideo;Audio;
