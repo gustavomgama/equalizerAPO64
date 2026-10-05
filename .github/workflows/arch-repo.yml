@@ -1,0 +1,108 @@
+name: Arch binary repository
+
+# Builds the equalizerapo64 pacman package and publishes it (plus the repo
+# database and, when a signing key is present, signatures) to the rolling
+# "arch-repo" prerelease. Users point pacman at
+#   .../releases/download/arch-repo
+# See docs/arch-repo.md for the client configuration.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'packaging/arch/**'
+      - '.github/workflows/arch-repo.yml'
+      - 'CMakeLists.txt'
+      - 'linux/**'
+      - 'Editor/**'
+      - 'filters/**'
+      - 'helpers/**'
+      - 'parser/**'
+      - 'libHybridConv-0.1.1/**'
+      - 'tests/**'
+      - '*.cpp'
+      - '*.h'
+      - 'version.h'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:latest
+    env:
+      SIGN_KEY: ${{ secrets.GPG_KEY_ID }}
+    steps:
+      - name: Install toolchain and dependencies
+        run: |
+          pacman -Syu --noconfirm base-devel git cmake pkgconf \
+            fftw libsndfile pipewire qt6-base github-cli gnupg
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Import signing key
+        if: ${{ env.SIGN_KEY != '' }}
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+        run: |
+          install -d -m700 "$GITHUB_WORKSPACE/.gnupg"
+          echo "$GPG_PRIVATE_KEY" | gpg --batch --import
+
+      - name: Build package
+        working-directory: packaging/arch
+        env:
+          GNUPGHOME: ${{ github.workspace }}/.gnupg
+        run: |
+          useradd -m builder
+          chown -R builder:builder "$GITHUB_WORKSPACE"
+          # The workspace is owned by builder but was created by root's
+          # checkout; mark it safe for builder's git (pkgver/check tests).
+          runuser -u builder -- env HOME=/home/builder \
+            git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          sign_flags=""
+          if [ -n "$SIGN_KEY" ]; then sign_flags="--sign --key $SIGN_KEY"; fi
+          runuser -u builder -- env HOME=/home/builder GNUPGHOME="$GNUPGHOME" \
+            makepkg -f --noconfirm $sign_flags
+
+      - name: Assemble repository
+        working-directory: packaging/arch
+        env:
+          GNUPGHOME: ${{ github.workspace }}/.gnupg
+        run: |
+          mkdir -p out
+          cp equalizerapo64-*.pkg.tar.zst out/
+          cp equalizerapo64-*.pkg.tar.zst.sig out/ 2>/dev/null || true
+          cd out
+          if [ -n "$SIGN_KEY" ]; then
+            repo-add --sign --key "$SIGN_KEY" \
+              equalizerapo64.db.tar.gz equalizerapo64-*.pkg.tar.zst
+            gpg --armor --export "$SIGN_KEY" > equalizerapo64.asc
+          else
+            repo-add equalizerapo64.db.tar.gz equalizerapo64-*.pkg.tar.zst
+          fi
+          # pacman fetches <repo>.db; repo-add symlinks it to the tarball, so
+          # replace the symlink with a real file of the same content.
+          for f in equalizerapo64.db equalizerapo64.files; do
+            cp --remove-destination "$f.tar.gz" "$f"
+            [ -f "$f.tar.gz.sig" ] && cp --remove-destination "$f.tar.gz.sig" "$f.sig"
+          done
+          ls -la
+
+      - name: Publish to the rolling arch-repo release
+        working-directory: packaging/arch/out
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view arch-repo >/dev/null 2>&1 || \
+            gh release create arch-repo --prerelease \
+              --title "Arch Linux repository" \
+              --notes "Rolling pacman repository. See docs/arch-repo.md."
+          gh release view arch-repo --json assets -q '.assets[].name' | while read -r n; do
+            [ -n "$n" ] && gh release delete-asset arch-repo "$n" -y
+          done
+          gh release upload arch-repo --clobber *

@@ -21,6 +21,11 @@ Double procession processing (64 bit internal pipeline) in EqualizerAPO maintain
 ## Installation
 Download the latest version from the [Releases page](https://github.com/TheFireKahuna/equalizerAPO64/releases).
 
+### Arch Linux
+
+Install from the self-hosted pacman repository — see
+[docs/arch-repo.md](docs/arch-repo.md).
+
 ## Building EqualizerAPO
 This project uses a fully automated Github Actions CI pipeline for both the main project and all dependencies.
 

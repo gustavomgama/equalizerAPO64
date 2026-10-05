@@ -1,0 +1,67 @@
+# Maintainer: gustavomgama
+# Builds the EqualizerAPO Linux port from the repository checkout containing
+# this PKGBUILD (no re-clone). Local build:  cd packaging/arch && makepkg -f
+#
+# The Windows build is untouched; this package only consumes the CMake/Linux
+# targets already present in the repository.
+
+pkgname=equalizerapo64
+pkgver=1.4.2.r73.g1dc32e0
+pkgrel=1
+pkgdesc="System-wide equalizer for Linux (PipeWire) - native EqualizerAPO port"
+arch=('x86_64')
+url="https://github.com/gustavomgama/equalizerAPO64"
+license=('GPL-2.0-or-later')
+# The repo hosts a binary repo, not debug symbol packages.
+options=('!debug')
+depends=('fftw' 'libsndfile' 'pipewire' 'qt6-base')
+makedepends=('cmake' 'pkgconf' 'git')
+optdepends=(
+  'wireplumber: loudness correction reads the default sink volume via wpctl'
+  'yabridge: run Windows VST2 plugins'
+)
+_repodir="$startdir/../.."
+
+# Only muparserx is fetched; it is linked statically and built with the
+# wide-string fork the project pins (the AUR muparserx is not wide-string).
+source=("muparserx::git+https://github.com/thefirekahuna/muparserx.git#commit=0a48779615103ca5baa301be9eefecdf23156ec6")
+sha256sums=('SKIP')
+
+pkgver() {
+  printf '1.4.2.r%s.g%s' \
+    "$(git -C "$_repodir" rev-list --count HEAD 2>/dev/null || echo 0)" \
+    "$(git -C "$_repodir" rev-parse --short HEAD 2>/dev/null || echo local)"
+}
+
+build() {
+  cmake -S "$_repodir" -B "$srcdir/build" \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX=/usr \
+    -DFETCHCONTENT_SOURCE_DIR_MUPARSERX="$srcdir/muparserx" \
+    -DFETCHCONTENT_FULLY_DISCONNECTED=ON
+  cmake --build "$srcdir/build" -j"$(( $(nproc) / 2 + 2 ))"
+}
+
+check() {
+  # host_e2e/reload_e2e need a live PipeWire; the rest are audio-server free.
+  ctest --test-dir "$srcdir/build" --output-on-failure -E 'host_e2e|reload_e2e'
+}
+
+package() {
+  DESTDIR="$pkgdir" cmake --install "$srcdir/build"
+
+  # muparserx is linked statically into eqapo_core; drop its leaked install.
+  rm -rf "$pkgdir/usr/include/muparserx" \
+         "$pkgdir/usr/share/cmake/muparserx" \
+         "$pkgdir/usr/lib/pkgconfig/muparserx.pc"
+  rm -f "$pkgdir"/usr/lib/libmuparserx.*
+
+  # systemd user unit into the scanned path, bound to the packaged binary.
+  install -Dm644 "$_repodir/linux/host/eqapo-host.service" \
+    "$pkgdir/usr/lib/systemd/user/eqapo-host.service"
+  sed -i 's#^ExecStart=.*#ExecStart=/usr/bin/eqapo-host#' \
+    "$pkgdir/usr/lib/systemd/user/eqapo-host.service"
+
+  install -Dm644 "$_repodir/License.txt" \
+    "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

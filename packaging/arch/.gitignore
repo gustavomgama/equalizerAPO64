@@ -1,0 +1,16 @@
+# makepkg scratch and build output
+src/
+pkg/
+out/
+muparserx/
+
+# Package and repository artifacts
+*.pkg.tar.zst
+*.pkg.tar.zst.sig
+equalizerapo64.db
+equalizerapo64.db.tar.gz
+equalizerapo64.db.tar.gz.sig
+equalizerapo64.files
+equalizerapo64.files.tar.gz
+equalizerapo64.files.tar.gz.sig
+equalizerapo64.asc

@@ -1,0 +1,21 @@
+pkgbase = equalizerapo64
+	pkgdesc = System-wide equalizer for Linux (PipeWire) - native EqualizerAPO port
+	pkgver = 1.4.2.r73.g1dc32e0
+	pkgrel = 1
+	url = https://github.com/gustavomgama/equalizerAPO64
+	arch = x86_64
+	license = GPL-2.0-or-later
+	makedepends = cmake
+	makedepends = pkgconf
+	makedepends = git
+	depends = fftw
+	depends = libsndfile
+	depends = pipewire
+	depends = qt6-base
+	optdepends = wireplumber: loudness correction reads the default sink volume via wpctl
+	optdepends = yabridge: run Windows VST2 plugins
+	options = !debug
+	source = muparserx::git+https://github.com/thefirekahuna/muparserx.git#commit=0a48779615103ca5baa301be9eefecdf23156ec6
+	sha256sums = SKIP
+
+pkgname = equalizerapo64
