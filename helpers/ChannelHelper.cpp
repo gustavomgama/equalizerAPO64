@@ -20,9 +20,11 @@
 #include "stdafx.h"
 #include <algorithm>
 #define WIN32_LEAN_AND_MEAN
+#ifdef _WIN32
 #include <windows.h>
 #include <Ks.h>
 #include <KsMedia.h>
+#endif
 
 #include "LogHelper.h"
 #include "ChannelHelper.h"

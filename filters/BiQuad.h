@@ -77,7 +77,11 @@ public:
 	void getCoefficients(double(&out_coeffs)[4], double& out_a0) const;
 
 private:
+#ifdef _WIN32
 	__declspec(align(16)) double a[4];
+#else
+	alignas(16) double a[4];
+#endif
 	double a0;
 
 	double x1, x2;

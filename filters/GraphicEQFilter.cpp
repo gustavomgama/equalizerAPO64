@@ -20,9 +20,11 @@
 #include "stdafx.h"
 #define _USE_MATH_DEFINES
 #include <cmath>
+#ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #define ENABLE_SNDFILE_WINDOWS_PROTOTYPES 1
+#endif
 #include <sndfile.h>
 
 #include "helpers/LogHelper.h"

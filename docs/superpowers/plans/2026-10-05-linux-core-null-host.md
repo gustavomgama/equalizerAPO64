@@ -1161,6 +1161,28 @@ Run: `git add -A && git commit -m "docs: add Linux build instructions; full CTes
 
 ---
 
+## Execution Deviations (applied 2026-10-05)
+
+These deviations from the steps above were made during execution; they keep the
+same guarantees and are reflected in the code:
+
+1. **Tasks 3 and 4 are coupled.** `FilterEngine`'s constructor instantiates
+   every factory, so the engine cannot link with only `PreampFilter`. The
+   filter set was ported in the same pass.
+2. **VST and loudness-correction are deferred** (spec phase 4). Their sources
+   are excluded from `eqapo_core`, and their factory registration in
+   `FilterEngine.cpp` is guarded by `#ifdef _WIN32`. They compile on Windows
+   exactly as before.
+3. **MSVC-isms shimmed** in `linux/wincompat.h`: `__forceinline`, `swscanf_s`,
+   `strcpy_s`, plus the speaker channel-mask constants. `BiQuad.h` gained a
+   guarded `alignas(16)` alternative.
+4. **Build additions:** `helpers/GainIterator.cpp`, `fftw3_threads`,
+   `-mavx2 -mfma -mf16c` on x86_64, and `<immintrin.h>` in `FilterEngine.cpp`.
+5. **`loadConfig` uses a recursive mutex** on Linux (`std::recursive_mutex`)
+   because `loadConfig` calls `loadConfigFile` while holding the lock, as the
+   Windows `CRITICAL_SECTION` allowed.
+6. **Include/Convolution relative paths** use `std::filesystem` on Linux.
+
 ## Self-Review
 
 **Spec coverage (phases 1–2):**

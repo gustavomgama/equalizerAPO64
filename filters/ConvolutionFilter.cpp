@@ -19,15 +19,29 @@
 
 #include "stdafx.h"
 #include <cmath>
+#ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #define ENABLE_SNDFILE_WINDOWS_PROTOTYPES 1
+#else
+#include "helpers/StringHelper.h"
+#endif
 #include <sndfile.h>
 #include <fftw3.h>
 
 #include "helpers/LogHelper.h"
 #include "helpers/MemoryHelper.h"
 #include "ConvolutionFilter.h"
+
+#ifndef _WIN32
+// libsndfile only exposes sf_wchar_open on Windows; on Linux convert the wide
+// path to UTF-8 and use the standard sf_open.
+static SNDFILE* sf_wchar_open(const wchar_t* path, int mode, SF_INFO* info)
+{
+	std::string utf8 = StringHelper::toString(path, CP_UTF8);
+	return sf_open(utf8.c_str(), mode, info);
+}
+#endif
 
 using namespace std;
 

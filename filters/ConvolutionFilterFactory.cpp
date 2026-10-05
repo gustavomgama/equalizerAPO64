@@ -18,7 +18,11 @@
 */
 
 #include "stdafx.h"
+#ifdef _WIN32
 #include <Shlwapi.h>
+#else
+#include <filesystem>
+#endif
 
 #include "helpers/MemoryHelper.h"
 #include "helpers/StringHelper.h"
@@ -39,6 +43,7 @@ vector<IFilter*> ConvolutionFilterFactory::createFilter(const wstring& configPat
 			value = value.substr(1);
 
 		wstring absolutePath;
+#ifdef _WIN32
 		if (PathIsRelativeW(value.c_str()))
 		{
 			wchar_t filePath[MAX_PATH];
@@ -53,6 +58,14 @@ vector<IFilter*> ConvolutionFilterFactory::createFilter(const wstring& configPat
 		}
 		else
 			absolutePath = value;
+#else
+		{
+			std::filesystem::path p(value);
+			if (p.is_relative())
+				p = std::filesystem::path(configPath).parent_path() / p;
+			absolutePath = p.wstring();
+		}
+#endif
 
 		void* mem = MemoryHelper::alloc(sizeof(ConvolutionFilter));
 		filter = new(mem) ConvolutionFilter(absolutePath);

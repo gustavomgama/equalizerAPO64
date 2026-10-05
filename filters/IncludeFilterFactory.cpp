@@ -18,7 +18,11 @@
 */
 
 #include "stdafx.h"
+#ifdef _WIN32
 #include <Shlwapi.h>
+#else
+#include <filesystem>
+#endif
 
 #include "helpers/LogHelper.h"
 #include "helpers/StringHelper.h"
@@ -57,6 +61,7 @@ vector<IFilter*> IncludeFilterFactory::createFilter(const wstring& configPath, w
 			value = value.substr(1);
 
 		wstring includePath;
+#ifdef _WIN32
 		if (PathIsRelativeW(value.c_str()))
 		{
 			wchar_t filePath[MAX_PATH];
@@ -71,6 +76,14 @@ vector<IFilter*> IncludeFilterFactory::createFilter(const wstring& configPath, w
 		}
 		else
 			includePath = value;
+#else
+		{
+			std::filesystem::path p(value);
+			if (p.is_relative())
+				p = std::filesystem::path(configPath).parent_path() / p;
+			includePath = p.wstring();
+		}
+#endif
 
 		if (recursionDepth >= RECURSION_LIMIT)
 			LogF(L"Skipping include of %s as recursion limit of %d has been reached", value.c_str(), RECURSION_LIMIT);

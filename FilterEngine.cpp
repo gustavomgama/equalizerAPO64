@@ -20,22 +20,34 @@
 #include "stdafx.h"
 #define _USE_MATH_DEFINES
 #include <cmath>
+#include <immintrin.h>
 #include <sstream>
 #include <fstream>
 #include <algorithm>
 #include <exception>
 #define WIN32_LEAN_AND_MEAN
+#ifdef _WIN32
 #include <windows.h>
 #include <Shlwapi.h>
 #include <Ks.h>
 #include <KsMedia.h>
+#else
+#include <sys/inotify.h>
+#include <poll.h>
+#include <unistd.h>
+#include <atomic>
+#endif
 #include <mpParser.h>
 #include <mpPackageCommon.h>
 #include <mpPackageNonCmplx.h>
 #include <mpPackageStr.h>
 #include <mpPackageMatrix.h>
 
+#ifdef _WIN32
 #include "helpers/RegistryHelper.h"
+#else
+#include "helpers/ConfigPathHelper.h"
+#endif
 #include "helpers/StringHelper.h"
 #include "helpers/LogHelper.h"
 #include "helpers/MemoryHelper.h"
@@ -54,11 +66,28 @@
 #include "filters/IncludeFilterFactory.h"
 #include "filters/ConvolutionFilterFactory.h"
 #include "filters/GraphicEQFilterFactory.h"
+#ifdef _WIN32
 #include "filters/VSTPluginFilterFactory.h"
 #include "filters/loudnessCorrection/LoudnessCorrectionFilterFactory.h"
+#endif
 
 using namespace std;
 using namespace mup;
+
+#ifdef _WIN32
+namespace {
+struct EngineLock {
+	CRITICAL_SECTION* cs;
+	explicit EngineLock(CRITICAL_SECTION* c) : cs(c) { EnterCriticalSection(cs); }
+	~EngineLock() { LeaveCriticalSection(cs); }
+};
+}
+#define ENGINE_LOCK() EngineLock _engineLock(&loadSection)
+#define RELEASE_LOAD_SEMAPHORE() ReleaseSemaphore(loadSemaphore, 1, NULL)
+#else
+#define ENGINE_LOCK() std::lock_guard<std::recursive_mutex> _engineLock(loadSection)
+#define RELEASE_LOAD_SEMAPHORE() loadSemaphore.release()
+#endif
 
 FilterEngine::FilterEngine()
 	: parser(nullptr),
@@ -70,14 +99,18 @@ FilterEngine::FilterEngine()
       realChannelCount(0),
       outputChannelCount(0),
 	  lastInputWasSilent(false),
+#ifdef _WIN32
 	  threadHandle(nullptr),
+#endif
 	  currentConfig(nullptr),
 	  nextConfig(nullptr),
 	  previousConfig(nullptr),
 	  transitionCounter(0)
 {
+#ifdef _WIN32
 	InitializeCriticalSection(&loadSection);
 	loadSemaphore = CreateSemaphore(NULL, 1, 1, NULL);
+#endif
 	parser = new ParserX();
 	parser->EnableAutoCreateVar(true);
 
@@ -94,13 +127,16 @@ FilterEngine::FilterEngine()
 	factories.push_back(new CopyFilterFactory());
 	factories.push_back(new ConvolutionFilterFactory());
 	factories.push_back(new GraphicEQFilterFactory());
+#ifdef _WIN32
 	factories.push_back(new VSTPluginFilterFactory());
 	factories.push_back(new LoudnessCorrectionFilterFactory());
+#endif
 }
 
 FilterEngine::~FilterEngine()
 {
 	// Make sure notification thread is terminated before cleaning up, otherwise deleted memory might be accessed in loadConfig
+#ifdef _WIN32
 	if (threadHandle != NULL)
 	{
 		SetEvent(shutdownEvent);
@@ -112,6 +148,12 @@ FilterEngine::~FilterEngine()
 		CloseHandle(threadHandle);
 		threadHandle = NULL;
 	}
+#else
+	notificationShutdown = true;
+	loadSemaphore.stop();
+	if (notificationThreadObj.joinable())
+		notificationThreadObj.join();
+#endif
 
 	cleanupConfigurations();
 
@@ -119,8 +161,10 @@ FilterEngine::~FilterEngine()
 		delete factory;
 
 	delete parser;
+#ifdef _WIN32
 	CloseHandle(loadSemaphore);
 	DeleteCriticalSection(&loadSection);
+#endif
 }
 
 void FilterEngine::resizeBuffers(unsigned frameCount) {
@@ -168,7 +212,7 @@ void FilterEngine::setDeviceInfo(bool capture, bool postMixInstalled, const wstr
 
 void FilterEngine::initialize(float sampleRate, unsigned inputChannelCount, unsigned realChannelCount, unsigned outputChannelCount, unsigned channelMask, unsigned maxFrameCount, const wstring& customPath)
 {
-	EnterCriticalSection(&loadSection);
+	ENGINE_LOCK();
 
 	cleanupConfigurations();
 
@@ -195,6 +239,7 @@ void FilterEngine::initialize(float sampleRate, unsigned inputChannelCount, unsi
 	vector<wstring> channelNames = ChannelHelper::getChannelNames(deviceChannelCount, channelMask);
 	TraceF(L"%d channels for this device: %s", deviceChannelCount, StringHelper::join(channelNames, L" ").c_str());
 
+#ifdef _WIN32
 	try
 	{
 		configPath = RegistryHelper::readValue(APP_REGPATH, L"ConfigPath");
@@ -202,9 +247,11 @@ void FilterEngine::initialize(float sampleRate, unsigned inputChannelCount, unsi
 	catch (RegistryException e)
 	{
 		LogF(L"Can't read config path because of: %s", e.getMessage().c_str());
-		LeaveCriticalSection(&loadSection);
 		return;
 	}
+#else
+	configPath = ConfigPathHelper::getConfigDir();
+#endif
 
 	parser->ClearConst();
 	parser->ClearFun();
@@ -226,6 +273,7 @@ void FilterEngine::initialize(float sampleRate, unsigned inputChannelCount, unsi
 	{
 		loadConfig(customPath);
 
+#ifdef _WIN32
 		if (threadHandle == NULL && customPath.empty())
 		{
 			shutdownEvent = CreateEventW(NULL, true, false, NULL);
@@ -235,13 +283,16 @@ void FilterEngine::initialize(float sampleRate, unsigned inputChannelCount, unsi
 			else
 				TraceF(L"Successfully created directory change notification thread %d for %s and its subtree", GetThreadId(threadHandle), configPath.c_str());
 		}
+#else
+		if (!notificationThreadObj.joinable() && customPath.empty())
+			notificationThreadObj = std::thread(notificationThread, this);
+#endif
 	}
-	LeaveCriticalSection(&loadSection);
 }
 
 void FilterEngine::loadConfig(const wstring& customPath)
 {
-	EnterCriticalSection(&loadSection);
+	ENGINE_LOCK();
 	timer.start();
 	if (previousConfig != NULL)
 	{
@@ -267,7 +318,11 @@ void FilterEngine::loadConfig(const wstring& customPath)
 	}
 
 	if (customPath.empty())
+#ifdef _WIN32
 		loadConfigFile(configPath + L"\\config.txt");
+#else
+		loadConfigFile(configPath + L"/config.txt");
+#endif
 	else
 		loadConfigFile(customPath);
 
@@ -291,14 +346,14 @@ void FilterEngine::loadConfig(const wstring& customPath)
 		currentConfig = config;
 	else
 		nextConfig = config;
-
-	LeaveCriticalSection(&loadSection);
 }
 
 void FilterEngine::loadConfigFile(const wstring& path)
 {
 	TraceF(L"Loading configuration from %s", path.c_str());
 
+	stringstream inputStream;
+#ifdef _WIN32
 	HANDLE hFile = INVALID_HANDLE_VALUE;
 	while (hFile == INVALID_HANDLE_VALUE)
 	{
@@ -317,8 +372,6 @@ void FilterEngine::loadConfigFile(const wstring& path)
 		}
 	}
 
-	stringstream inputStream;
-
 	char buf[8192];
 	unsigned long bytesRead = -1;
 	while (ReadFile(hFile, buf, sizeof(buf), &bytesRead, NULL) && bytesRead != 0)
@@ -329,6 +382,16 @@ void FilterEngine::loadConfigFile(const wstring& path)
 	CloseHandle(hFile);
 
 	inputStream.seekg(0);
+#else
+	std::ifstream fileIn(string(path.begin(), path.end()), std::ios::binary);
+	if (!fileIn)
+	{
+		LogF(L"Error while reading configuration file %s", path.c_str());
+		return;
+	}
+	inputStream << fileIn.rdbuf();
+	inputStream.seekg(0);
+#endif
 
 	vector<wstring> savedChannelNames = currentChannelNames;
 
@@ -519,7 +582,7 @@ void FilterEngine::process(float* output, float* input, unsigned frameCount)
 		currentConfig = nextConfig;
 		nextConfig = NULL;
 		transitionCounter = 0;
-		ReleaseSemaphore(loadSemaphore, 1, NULL);
+		RELEASE_LOAD_SEMAPHORE();
 	}
 }
 
@@ -574,7 +637,7 @@ void FilterEngine::process(float** output, float** input, unsigned frameCount)
 		currentConfig = nextConfig;
 		nextConfig = NULL;
 		transitionCounter = 0;
-		ReleaseSemaphore(loadSemaphore, 1, NULL);
+		RELEASE_LOAD_SEMAPHORE();
 	}
 }
 
@@ -609,7 +672,7 @@ void FilterEngine::process(double* output, double* input, unsigned frameCount)
 		currentConfig = nextConfig;
 		nextConfig = NULL;
 		transitionCounter = 0;
-		ReleaseSemaphore(loadSemaphore, 1, NULL);
+		RELEASE_LOAD_SEMAPHORE();
 	}
 }
 
@@ -645,7 +708,7 @@ void FilterEngine::process(double** output, double** input, unsigned frameCount)
 		currentConfig = nextConfig;
 		nextConfig = NULL;
 		transitionCounter = 0;
-		ReleaseSemaphore(loadSemaphore, 1, NULL);
+		RELEASE_LOAD_SEMAPHORE();
 	}
 }
 #pragma AVRT_CODE_END
@@ -749,6 +812,7 @@ void FilterEngine::cleanupConfigurations()
 	}
 }
 
+#ifdef _WIN32
 unsigned long __stdcall FilterEngine::notificationThread(void* parameter)
 {
 	FilterEngine* engine = (FilterEngine*)parameter;
@@ -817,3 +881,53 @@ unsigned long __stdcall FilterEngine::notificationThread(void* parameter)
 
 	return 0;
 }
+#else
+void FilterEngine::notificationThread(FilterEngine* engine)
+{
+	int fd = inotify_init1(IN_CLOEXEC);
+	if (fd < 0)
+		return;
+
+	std::string dir(engine->configPath.begin(), engine->configPath.end());
+	int wd = inotify_add_watch(fd, dir.c_str(),
+		IN_CLOSE_WRITE | IN_MOVED_TO | IN_CREATE | IN_DELETE);
+	if (wd < 0)
+	{
+		close(fd);
+		return;
+	}
+
+	char buf[4096] __attribute__((aligned(__alignof__(struct inotify_event))));
+	while (!engine->notificationShutdown.load())
+	{
+		struct pollfd pfd = {fd, POLLIN, 0};
+		int r = poll(&pfd, 1, 200);
+		if (r <= 0)
+			continue;
+
+		ssize_t len = read(fd, buf, sizeof(buf));
+		if (len <= 0)
+			continue;
+
+		bool configChanged = false;
+		for (char* p = buf; p < buf + len; )
+		{
+			auto* ev = reinterpret_cast<struct inotify_event*>(p);
+			if (ev->len > 0 && std::string(ev->name) == "config.txt")
+				configChanged = true;
+			p += sizeof(struct inotify_event) + ev->len;
+		}
+
+		if (configChanged)
+		{
+			// Do not reload while a previous transition is still running.
+			if (!engine->loadSemaphore.waitOrStop())
+				break;
+			engine->loadConfig(L"");
+		}
+	}
+
+	inotify_rm_watch(fd, wd);
+	close(fd);
+}
+#endif

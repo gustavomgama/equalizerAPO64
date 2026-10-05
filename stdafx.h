@@ -19,6 +19,7 @@
 
 #define _USE_MATH_DEFINES
 #include <cmath>
+#include <cfloat>
 #include <climits>
 #include <cstdarg>
 #include <cstdio>

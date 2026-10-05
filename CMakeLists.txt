@@ -31,20 +31,52 @@ else()
 endif()
 
 add_library(eqapo_core STATIC
+  FilterEngine.cpp
+  FilterConfiguration.cpp
+  IFilter.cpp
   helpers/MemoryHelper.cpp
   helpers/LogHelper.cpp
   helpers/StringHelper.cpp
+  helpers/ChannelHelper.cpp
+  helpers/GainIterator.cpp
   helpers/ConfigPathHelper.cpp
   parser/LogicalOperators.cpp
   parser/RegexFunctions.cpp
   parser/StringOperators.cpp
+  parser/RegistryFunctions.cpp
+  filters/BiQuad.cpp
+  filters/BiQuadFilter.cpp
+  filters/BiQuadFilterFactory.cpp
+  filters/ChannelFilter.cpp
+  filters/ChannelFilterFactory.cpp
+  filters/ConvolutionFilter.cpp
+  filters/ConvolutionFilterFactory.cpp
+  filters/CopyFilter.cpp
+  filters/CopyFilterFactory.cpp
+  filters/DelayFilter.cpp
+  filters/DelayFilterFactory.cpp
+  filters/DeviceFilterFactory.cpp
+  filters/ExpressionFilterFactory.cpp
+  filters/GraphicEQFilter.cpp
+  filters/GraphicEQFilterFactory.cpp
+  filters/IfFilterFactory.cpp
+  filters/IIRFilter.cpp
+  filters/IIRFilterFactory.cpp
+  filters/IncludeFilterFactory.cpp
+  filters/PreampFilter.cpp
+  filters/PreampFilterFactory.cpp
+  filters/StageFilterFactory.cpp
+  libHybridConv-0.1.1/libHybridConv_eapo.cpp
 )
 target_include_directories(eqapo_core PUBLIC
   ${CMAKE_SOURCE_DIR} ${MUPARSERX_INCLUDES} ${FFTW3_INCLUDE_DIRS} ${SNDFILE_INCLUDE_DIRS}
 )
 target_compile_definitions(eqapo_core PUBLIC MUP_USE_WIDE_STRING)
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|amd64|AMD64")
+  target_compile_options(eqapo_core PUBLIC -mavx2 -mfma -mf16c)
+endif()
 target_link_libraries(eqapo_core PUBLIC
-  ${FFTW3_LIBRARIES} ${SNDFILE_LIBRARIES} ${MUPARSERX_LINK} dl pthread
+  ${FFTW3_LIBRARIES} fftw3_threads ${SNDFILE_LIBRARIES} ${MUPARSERX_LINK} dl pthread
 )
 
 enable_testing()
@@ -56,3 +88,11 @@ add_test(NAME windows_untouched COMMAND bash ${CMAKE_SOURCE_DIR}/tests/check_win
 add_executable(test_strings tests/test_strings.cpp)
 target_link_libraries(test_strings PRIVATE eqapo_core)
 add_test(NAME strings COMMAND test_strings)
+
+add_executable(test_engine_preamp tests/test_engine_preamp.cpp)
+target_link_libraries(test_engine_preamp PRIVATE eqapo_core)
+add_test(NAME engine_preamp COMMAND test_engine_preamp)
+
+add_executable(test_filters tests/test_filters.cpp)
+target_link_libraries(test_filters PRIVATE eqapo_core)
+add_test(NAME filters COMMAND test_filters)
