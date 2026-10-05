@@ -45,53 +45,55 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Import signing key
-        if: ${{ env.SIGN_KEY != '' }}
+      # One shell as the non-root builder: import the key into builder's
+      # GNUPGHOME, build, sign the package, and assemble the repo database.
+      # (makepkg refuses to run as root; the signing key must live in the
+      # same keyring that repo-add and makepkg use.)
+      - name: Build and assemble repository
+        working-directory: packaging/arch
         env:
+          GNUPGHOME: ${{ github.workspace }}/.gnupg
           GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
         run: |
-          install -d -m700 "$GITHUB_WORKSPACE/.gnupg"
-          echo "$GPG_PRIVATE_KEY" | gpg --batch --import
-
-      - name: Build package
-        working-directory: packaging/arch
-        env:
-          GNUPGHOME: ${{ github.workspace }}/.gnupg
-        run: |
           useradd -m builder
+          install -d -m700 "$GNUPGHOME"
           chown -R builder:builder "$GITHUB_WORKSPACE"
-          # The workspace is owned by builder but was created by root's
-          # checkout; mark it safe for builder's git (pkgver/check tests).
+          # The workspace was created by root's checkout; mark it safe for
+          # builder's git (used by pkgver() and the windows_untouched test).
           runuser -u builder -- env HOME=/home/builder \
             git config --global --add safe.directory "$GITHUB_WORKSPACE"
-          sign_flags=""
-          if [ -n "$SIGN_KEY" ]; then sign_flags="--sign --key $SIGN_KEY"; fi
-          runuser -u builder -- env HOME=/home/builder GNUPGHOME="$GNUPGHOME" \
-            makepkg -f --noconfirm $sign_flags
+          runuser -u builder -- env HOME=/home/builder \
+            GNUPGHOME="$GNUPGHOME" SIGN_KEY="$SIGN_KEY" \
+            GPG_PRIVATE_KEY="$GPG_PRIVATE_KEY" \
+            bash -euo pipefail -c '
+              sign_flags=""
+              if [ -n "$SIGN_KEY" ]; then
+                printf "%s\n" "$GPG_PRIVATE_KEY" | gpg --batch --import
+                sign_flags="--sign --key $SIGN_KEY"
+              fi
 
-      - name: Assemble repository
-        working-directory: packaging/arch
-        env:
-          GNUPGHOME: ${{ github.workspace }}/.gnupg
-        run: |
-          mkdir -p out
-          cp equalizerapo64-*.pkg.tar.zst out/
-          cp equalizerapo64-*.pkg.tar.zst.sig out/ 2>/dev/null || true
-          cd out
-          if [ -n "$SIGN_KEY" ]; then
-            repo-add --sign --key "$SIGN_KEY" \
-              equalizerapo64.db.tar.gz equalizerapo64-*.pkg.tar.zst
-            gpg --armor --export "$SIGN_KEY" > equalizerapo64.asc
-          else
-            repo-add equalizerapo64.db.tar.gz equalizerapo64-*.pkg.tar.zst
-          fi
-          # pacman fetches <repo>.db; repo-add symlinks it to the tarball, so
-          # replace the symlink with a real file of the same content.
-          for f in equalizerapo64.db equalizerapo64.files; do
-            cp --remove-destination "$f.tar.gz" "$f"
-            [ -f "$f.tar.gz.sig" ] && cp --remove-destination "$f.tar.gz.sig" "$f.sig"
-          done
-          ls -la
+              makepkg -f --noconfirm $sign_flags
+
+              mkdir -p out
+              cp equalizerapo64-*.pkg.tar.zst out/
+              cp equalizerapo64-*.pkg.tar.zst.sig out/ 2>/dev/null || true
+              cd out
+              if [ -n "$SIGN_KEY" ]; then
+                repo-add --sign --key "$SIGN_KEY" \
+                  equalizerapo64.db.tar.gz equalizerapo64-*.pkg.tar.zst
+                gpg --armor --export "$SIGN_KEY" > equalizerapo64.asc
+              else
+                repo-add equalizerapo64.db.tar.gz equalizerapo64-*.pkg.tar.zst
+              fi
+              # pacman fetches <repo>.db, which repo-add symlinks to the
+              # tarball; replace the symlink with a real file (uploadable).
+              for f in equalizerapo64.db equalizerapo64.files; do
+                cp --remove-destination "$f.tar.gz" "$f"
+                [ -f "$f.tar.gz.sig" ] && \
+                  cp --remove-destination "$f.tar.gz.sig" "$f.sig"
+              done
+              ls -la
+            '
 
       - name: Publish to the rolling arch-repo release
         working-directory: packaging/arch/out
