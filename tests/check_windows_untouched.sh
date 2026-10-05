@@ -18,13 +18,22 @@ if [ -n "$bad" ]; then
 fi
 
 # 2. Any modified shared source that originally contained Windows-specific
-#    code must still contain a #ifdef _WIN32 guard.
+#    code must still contain a #ifdef _WIN32 guard. Compare against the
+#    pre-port base (origin/main) so guards added by the port itself do not
+#    cause false positives; fall back to HEAD if there is no origin.
+BASE=""
+if git rev-parse --verify -q origin/main >/dev/null 2>&1; then
+  BASE="origin/main"
+elif git rev-parse --verify -q HEAD >/dev/null 2>&1; then
+  BASE="HEAD"
+fi
+
 fail=0
 for f in $(git status --porcelain | awk '{print $2}' | grep -E '\.(cpp|h)$' || true); do
   case "$f" in
     helpers/ConfigPathHelper.*|linux/*|tests/*) continue ;;
   esac
-  if git show "HEAD:$f" 2>/dev/null | grep -qE 'windows\.h|_WIN32|CreateFile|LoadLibrary|CRITICAL_SECTION|CreateSemaphore|QueryPerformanceCounter|IMMDevice'; then
+  if [ -n "$BASE" ] && git show "$BASE:$f" 2>/dev/null | grep -qE 'windows\.h|_WIN32|CreateFile|LoadLibrary|CRITICAL_SECTION|CreateSemaphore|QueryPerformanceCounter|IMMDevice'; then
     if ! grep -q '_WIN32' "$f"; then
       echo "FAIL: Windows guard missing in modified file $f"
       fail=1
