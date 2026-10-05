@@ -42,7 +42,11 @@ to apply the chain system-wide. The host hot-reloads
    (WirePlumber). It works when `wpctl` is present; the value is cached for
    500 ms to avoid spawning a process on every poll. A native libpipewire
    reader is a possible follow-up.
-2. **APO install / registration checks** and the **Device Selector wizard** are
+2. **`Device:` blocks** match against the Linux sink name (`EqualizerAPO`).
+   Use `Device: all` or `Device: EqualizerAPO`; a Windows device name such as
+   `Device: Speakers` will not match and the block is skipped (the engine logs
+   this at trace level). This is the main config-portability gotcha.
+3. **APO install / registration checks** and the **Device Selector wizard** are
    Windows-only and are no-ops on Linux with a log message.
 3. **VST crash isolation**: a segfaulting native plugin takes down `eqapo-host`
    (systemd restarts it). Windows used SEH; Linux has no in-process equivalent.
@@ -55,9 +59,9 @@ to apply the chain system-wide. The host hot-reloads
 
 ## Verification
 
-`ctest` runs 9 tests: `platform`, `windows_untouched`, `strings`,
+`ctest` runs 10 tests: `platform`, `windows_untouched`, `strings`,
 `engine_preamp`, `filters`, `null_e2e` (real WAV through the engine),
 `host_e2e` (live PipeWire virtual sink + link), `vst_e2e` (stub VST2 plugin
-loaded via `dlopen` and its gain asserted), and `full_chain_e2e` (Preamp,
+loaded via `dlopen` and its gain asserted), `full_chain_e2e` (Preamp,
 GraphicEQ, BiQuad, Delay, Copy, LoudnessCorrection, Convolution, and a VST2
-plugin in one config).
+plugin in one config), and `device_e2e` (`Device:` routing semantics).

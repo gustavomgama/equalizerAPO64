@@ -120,6 +120,7 @@ target_include_directories(eqapo-vst-stub PRIVATE ${CMAKE_SOURCE_DIR})
 set_target_properties(eqapo-vst-stub PROPERTIES PREFIX "")
 add_test(NAME vst_e2e COMMAND bash ${CMAKE_SOURCE_DIR}/tests/run_vst_e2e.sh $<TARGET_FILE:eqapo-null> $<TARGET_FILE:eqapo-vst-stub>)
 add_test(NAME full_chain_e2e COMMAND bash ${CMAKE_SOURCE_DIR}/tests/run_full_chain_e2e.sh $<TARGET_FILE:eqapo-null> $<TARGET_FILE:eqapo-vst-stub>)
+add_test(NAME device_e2e COMMAND bash ${CMAKE_SOURCE_DIR}/tests/run_device_e2e.sh $<TARGET_FILE:eqapo-null>)
 
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets)
 add_subdirectory(Editor)

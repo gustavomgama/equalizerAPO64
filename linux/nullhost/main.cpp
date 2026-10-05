@@ -54,6 +54,9 @@ int main(int argc, char** argv)
 
 	const unsigned maxFrames = 1024;
 	FilterEngine engine;
+	// Give the engine a device identity so `Device:` blocks can match on Linux
+	// (use `Device: all` or `Device: EqualizerAPO`).
+	engine.setDeviceInfo(false, true, L"EqualizerAPO", L"", L"", L"EqualizerAPO");
 	engine.initialize((float)inInfo.samplerate, inInfo.channels, inInfo.channels,
 		inInfo.channels, 0, maxFrames, cfg);
 

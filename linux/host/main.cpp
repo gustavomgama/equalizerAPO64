@@ -239,6 +239,11 @@ int main(int argc, char** argv)
 	std::wstring cfg;
 	if (!configPath.empty())
 		cfg.assign(configPath.begin(), configPath.end());
+	// Give the engine a device identity so `Device:` blocks can match on Linux
+	// (use `Device: all` or `Device: <sink name>`; Windows device names will
+	// not match).
+	std::wstring wName(nodeName.begin(), nodeName.end());
+	host.engine.setDeviceInfo(false, true, wName, L"", L"", wName);
 	host.engine.initialize((float)rate, channels, channels, channels, 0, kMaxFrames, cfg);
 
 	host.loop = pw_main_loop_new(nullptr);
