@@ -71,6 +71,16 @@ host watches `~/.config/equalizerapo/config.txt` and hot-reloads on change.
     ./build/eqapo-host --config FILE   # one-shot config file (no hot-reload)
     ./build/eqapo-host --name MyEQ --rate 48000 --channels 2
 
+To route everything through the EQ:
+
+    wpctl status                   # find the "EqualizerAPO" sink id
+    wpctl set-default <id>         # all audio now goes through the EQ
+    wpctl set-default <real-id>    # restore when done
+
+The host deliberately does **not** change the system default itself: if it
+crashed, the default would point at a dead sink and audio would break. Set it
+yourself (or move individual streams) and restore when finished.
+
 VST2 plugins load natively: a `VSTPlugin: Library /path/to/plugin.so` line in
 the config is resolved through `dlopen`. Relative paths resolve against
 `~/.vst`.
