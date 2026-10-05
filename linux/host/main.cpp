@@ -11,11 +11,13 @@
 #include <spa/param/audio/raw-utils.h>
 
 #include <atomic>
+#include <chrono>
 #include <csignal>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include "FilterEngine.h"
@@ -25,11 +27,15 @@ namespace {
 constexpr unsigned kMaxFrames = 8192;
 
 // Lock-free single-producer/single-consumer ring of interleaved float samples.
+// Bounded: on overflow the producer drops the OLDEST unread samples (so latency
+// stays bounded and the RT thread never blocks) and increments `overruns`.
 struct Ring
 {
 	std::vector<float> data;
 	std::atomic<size_t> writeIdx{0};
 	std::atomic<size_t> readIdx{0};
+	std::atomic<uint64_t> overruns{0};
+	std::atomic<uint64_t> underruns{0};
 
 	Ring(size_t frames, unsigned channels) : data(frames * channels, 0.0f) {}
 
@@ -43,6 +49,18 @@ struct Ring
 	void push(const float* src, size_t count)
 	{
 		size_t w = writeIdx.load(std::memory_order_relaxed);
+		size_t r = readIdx.load(std::memory_order_acquire);
+		// Keep one slot free so full and empty are distinguishable.
+		size_t used = w >= r ? w - r : data.size() - r + w;
+		size_t freeSamples = data.size() - used - 1;
+		if (count > freeSamples)
+		{
+			// Drop oldest unread samples to make room; bounded, never blocks.
+			size_t drop = count - freeSamples;
+			r = (r + drop) % data.size();
+			readIdx.store(r, std::memory_order_release);
+			overruns.fetch_add(1, std::memory_order_relaxed);
+		}
 		for (size_t i = 0; i < count; ++i)
 		{
 			data[w] = src[i];
@@ -57,6 +75,7 @@ struct Ring
 		if (available() < count)
 		{
 			std::memset(dst, 0, count * sizeof(float));
+			underruns.fetch_add(1, std::memory_order_relaxed);
 			return;
 		}
 		for (size_t i = 0; i < count; ++i)
@@ -78,6 +97,7 @@ struct Host
 	struct pw_main_loop* loop = nullptr;
 	struct pw_stream* inStream = nullptr;
 	struct pw_stream* outStream = nullptr;
+	std::atomic<bool> failed{false};
 
 	explicit Host(unsigned ch)
 		: ring(1u << 15, ch), inBuf(kMaxFrames * ch, 0.0f), outBuf(kMaxFrames * ch, 0.0f), channels(ch)
@@ -91,6 +111,22 @@ void onSignal(int)
 {
 	if (g_loop)
 		pw_main_loop_quit(g_loop);
+}
+
+// Fail fast and loudly on a stream error so a supervisor can restart us,
+// instead of stalling silently.
+void onStreamState(void* userdata, enum pw_stream_state old, enum pw_stream_state state, const char* error)
+{
+	Host* h = static_cast<Host*>(userdata);
+	std::fprintf(stderr, "eqapo-host: stream %s -> %s%s%s\n",
+		pw_stream_state_as_string(old), pw_stream_state_as_string(state),
+		error ? ": " : "", error ? error : "");
+	if (state == PW_STREAM_STATE_ERROR)
+	{
+		h->failed.store(true);
+		if (h->loop)
+			pw_main_loop_quit(h->loop);
+	}
 }
 
 void onInProcess(void* userdata)
@@ -239,6 +275,7 @@ int main(int argc, char** argv)
 	struct pw_stream_events outEvents = {};
 	outEvents.version = PW_VERSION_STREAM_EVENTS;
 	outEvents.process = onOutProcess;
+	outEvents.state_changed = onStreamState;
 	host.outStream = pw_stream_new_simple(pw_main_loop_get_loop(host.loop), "eqapo-output",
 		outProps, &outEvents, &host);
 
@@ -262,6 +299,7 @@ int main(int argc, char** argv)
 	struct pw_stream_events inEvents = {};
 	inEvents.version = PW_VERSION_STREAM_EVENTS;
 	inEvents.process = onInProcess;
+	inEvents.state_changed = onStreamState;
 	host.inStream = pw_stream_new_simple(pw_main_loop_get_loop(host.loop), "eqapo-input",
 		inProps, &inEvents, &host);
 
@@ -276,12 +314,38 @@ int main(int argc, char** argv)
 	std::fprintf(stderr, "eqapo-host: running (sink '%s', %u Hz, %u ch)\n",
 		nodeName.c_str(), rate, channels);
 
+	// Observability: report over/underruns from a non-RT thread.
+	std::atomic<bool> statsStop{false};
+	std::thread statsThread([&host, &statsStop]() {
+		uint64_t lastOver = 0, lastUnder = 0;
+		while (!statsStop.load())
+		{
+			std::this_thread::sleep_for(std::chrono::seconds(5));
+			uint64_t over = host.ring.overruns.load();
+			uint64_t under = host.ring.underruns.load();
+			if (over != lastOver || under != lastUnder)
+			{
+				std::fprintf(stderr, "eqapo-host: stats overruns=%llu underruns=%llu\n",
+					(unsigned long long)over, (unsigned long long)under);
+				lastOver = over;
+				lastUnder = under;
+			}
+		}
+	});
+
 	pw_main_loop_run(host.loop);
+
+	statsStop.store(true);
+	statsThread.join();
+
+	std::fprintf(stderr, "eqapo-host: stopped (overruns=%llu underruns=%llu)\n",
+		(unsigned long long)host.ring.overruns.load(),
+		(unsigned long long)host.ring.underruns.load());
 
 	pw_stream_destroy(host.inStream);
 	pw_stream_destroy(host.outStream);
 	pw_context_destroy(context);
 	pw_main_loop_destroy(host.loop);
 	pw_deinit();
-	return 0;
+	return host.failed.load() ? 1 : 0;
 }

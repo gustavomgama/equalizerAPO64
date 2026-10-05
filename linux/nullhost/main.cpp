@@ -63,7 +63,13 @@ int main(int argc, char** argv)
 	while ((frames = sf_readf_double(in, inBuf.data(), maxFrames)) > 0)
 	{
 		engine.process(outBuf.data(), inBuf.data(), (unsigned)frames);
-		sf_writef_double(out, outBuf.data(), frames);
+		if (sf_writef_double(out, outBuf.data(), frames) != frames)
+		{
+			std::fprintf(stderr, "write %s: %s\n", outPath.c_str(), sf_strerror(out));
+			sf_close(in);
+			sf_close(out);
+			return 1;
+		}
 	}
 
 	sf_close(in);

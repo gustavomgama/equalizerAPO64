@@ -1,0 +1,26 @@
+# EqualizerAPO system-wide EQ — systemd user service.
+#
+# Install:
+#   install -Dm644 linux/host/eqapo-host.service ~/.config/systemd/user/eqapo-host.service
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now eqapo-host.service
+#
+# Restart=on-failure pairs with the host's fail-fast behaviour: a PipeWire
+# stream error exits non-zero and systemd restarts the host.
+
+[Unit]
+Description=EqualizerAPO system-wide equalizer (PipeWire)
+After=pipewire.service
+Wants=pipewire.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/eqapo-host
+Restart=on-failure
+RestartSec=2
+# Bounded restart behaviour to avoid a tight crash loop.
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Install]
+WantedBy=default.target
