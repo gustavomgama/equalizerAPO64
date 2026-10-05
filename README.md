@@ -60,3 +60,19 @@ Example:
 
     ./build/eqapo-null --in input.wav --out output.wav --config ~/.config/equalizerapo/config.txt
 
+### System-wide EQ with the PipeWire host
+
+`eqapo-host` exposes a virtual sink named `EqualizerAPO` and forwards the
+processed audio to the default output. Route an application to it (or set it
+as the default sink) to apply the `config.txt` filter chain system-wide. The
+host watches `~/.config/equalizerapo/config.txt` and hot-reloads on change.
+
+    ./build/eqapo-host                 # virtual sink "EqualizerAPO", 48 kHz stereo
+    ./build/eqapo-host --config FILE   # one-shot config file (no hot-reload)
+    ./build/eqapo-host --name MyEQ --rate 48000 --channels 2
+
+VST2 plugins load natively: a `VSTPlugin: Library /path/to/plugin.so` line in
+the config is resolved through `dlopen`. Relative paths resolve against
+`~/.vst`.
+
+
