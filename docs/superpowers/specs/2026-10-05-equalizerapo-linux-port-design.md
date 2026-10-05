@@ -1,7 +1,8 @@
 # EqualizerAPO Linux Port — Design Spec
 
 **Date:** 2026-10-05
-**Status:** Approved (design); pending written-spec review
+**Status:** Implemented — see `docs/linux-port-status.md` for current state and
+known limitations. Windows build preserved.
 **Scope:** Native Linux system-wide equalizer built from this repository's engine,
 config format, and Qt Editor.
 
@@ -195,8 +196,9 @@ Each filter keeps its Windows branch; Linux branch added under `#else`:
   `FilterEngine::process` path; pre-allocate buffers.
 - **Loudness correction** — system-volume semantics differ from Windows.
   Mitigation: PipeWire-sourced value or stub in phase 1.
-- **muparserx AUR package** — single-maintainer; mitigation: vendor the source
-  if the AUR package breaks.
+- **muparserx availability** — built from the fork via CMake `FetchContent`
+  (pinned commit) when no system install is found, so no AUR dependency is
+  required.
 
 ## 12. Open questions
 
