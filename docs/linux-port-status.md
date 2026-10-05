@@ -59,14 +59,23 @@ to apply the chain system-wide. The host hot-reloads
 
 ## Verification
 
-`ctest` runs 12 tests: `platform`, `windows_untouched`, `strings`,
+`ctest` runs 13 tests: `platform`, `windows_untouched`, `strings`,
 `engine_preamp`, `filters`, `null_e2e` (real WAV through the engine),
 `host_e2e` (live PipeWire virtual sink + link), `vst_e2e` (stub VST2 plugin
-loaded via `dlopen` and its gain asserted), `full_chain_e2e` (Preamp,
-GraphicEQ, BiQuad, Delay, Copy, LoudnessCorrection, Convolution, and a VST2
-plugin in one config), `device_e2e` (`Device:` routing semantics),
-`logging_e2e` (wide-string log formatting), and `dsp_e2e` (low-pass gain at
-100 Hz vs 10 kHz — validates the filter math, not just finiteness).
+loaded via `dlopen` and its gain asserted), `full_chain_e2e` (every filter
+type in one config), `device_e2e` (`Device:` routing semantics),
+`logging_e2e` (wide-string log formatting), `dsp_e2e` (low-pass gain at
+100 Hz vs 10 kHz — validates the filter math, not just finiteness), and
+`relative_e2e` (relative Include/Convolution paths).
+
+A sanitizer build is available for development:
+
+    cmake -B build-asan -DEQAPO_SANITIZE=ON -DCMAKE_BUILD_TYPE=Debug
+    cmake --build build-asan -j2
+
+The engine, tests, and Editor run clean under AddressSanitizer and
+UndefinedBehaviorSanitizer (this is how the `new[]`/`delete` mismatches in
+GraphicEQ and Convolution were found and fixed).
 
 The `full_chain_e2e` config exercises **every filter type**: Preamp, Eval,
 If/Else/EndIf, GraphicEQ, BiQuad (PK/HP), IIR, Copy, Channel, Delay, Stage,
