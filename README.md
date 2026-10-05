@@ -100,8 +100,8 @@ The unit restarts the host automatically if PipeWire errors (fail-fast +
 
 `eqapo-editor` is the ported Qt6 GUI. It edits the same `config.txt` and shows
 a live frequency response. On Linux it lists PipeWire devices; Windows-only
-features (APO install/registration checks, the Device Selector wizard,
-loudness correction) are disabled with a log message.
+features (APO install/registration checks, the Device Selector wizard) are
+disabled with a log message.
 
 
 

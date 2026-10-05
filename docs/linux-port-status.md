@@ -13,7 +13,7 @@ ships; Linux support is additive behind `#ifdef _WIN32` guards, enforced by the
 | `eqapo-null` | WAV in → engine → WAV out (DSP verification) |
 | `eqapo-host` | Native PipeWire virtual sink, hot-reload, fail-fast, stats |
 | VST2 | Native `.so` via `dlopen`; relative paths under `~/.vst` |
-| `eqapo-editor` | Qt6 GUI: edits `config.txt`, live frequency response, PipeWire device list |
+| `eqapo-editor` | Qt6 GUI: edits `config.txt`, live frequency response, PipeWire device list, all filter GUIs incl. loudness |
 | Packaging | `cmake --install`, desktop entry, systemd user unit |
 
 ## Build and install
