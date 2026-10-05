@@ -121,6 +121,7 @@ add_executable(eqapo-host linux/host/main.cpp)
 target_link_libraries(eqapo-host PRIVATE eqapo_core ${PIPEWIRE_LIBRARIES})
 target_include_directories(eqapo-host PRIVATE ${PIPEWIRE_INCLUDE_DIRS})
 add_test(NAME host_e2e COMMAND bash ${CMAKE_SOURCE_DIR}/tests/run_host_e2e.sh $<TARGET_FILE:eqapo-host>)
+add_test(NAME reload_e2e COMMAND bash ${CMAKE_SOURCE_DIR}/tests/run_reload_e2e.sh $<TARGET_FILE:eqapo-host>)
 
 add_library(eqapo-vst-stub SHARED linux/vst-test/stub_plugin.cpp)
 target_include_directories(eqapo-vst-stub PRIVATE ${CMAKE_SOURCE_DIR})
