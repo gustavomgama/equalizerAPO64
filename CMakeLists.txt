@@ -123,6 +123,7 @@ add_test(NAME full_chain_e2e COMMAND bash ${CMAKE_SOURCE_DIR}/tests/run_full_cha
 add_test(NAME device_e2e COMMAND bash ${CMAKE_SOURCE_DIR}/tests/run_device_e2e.sh $<TARGET_FILE:eqapo-null>)
 add_test(NAME logging_e2e COMMAND bash ${CMAKE_SOURCE_DIR}/tests/run_logging_e2e.sh $<TARGET_FILE:eqapo-null>)
 add_test(NAME dsp_e2e COMMAND bash ${CMAKE_SOURCE_DIR}/tests/run_dsp_e2e.sh $<TARGET_FILE:eqapo-null>)
+add_test(NAME relative_e2e COMMAND bash ${CMAKE_SOURCE_DIR}/tests/run_relative_e2e.sh $<TARGET_FILE:eqapo-null>)
 
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets)
 add_subdirectory(Editor)
