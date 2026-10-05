@@ -30,3 +30,12 @@ else
   grep "Loading configuration from" "$LOG" | tail -3
   exit 1
 fi
+
+# The level label must be a whole word, not a truncated first character.
+if grep -qE '(TRACE|LOG) \(' "$LOG"; then
+  echo "OK logging: level label intact"
+else
+  echo "FAIL: level label truncated (expected TRACE/LOG, got T/L)"
+  head -2 "$LOG"
+  exit 1
+fi

@@ -189,7 +189,7 @@ void LogHelper::log(const char* file, int line, const void* caller, bool trace, 
 		localtime_r(&now, &lt);
 		fwprintf(fp, L"%04d-%02d-%02d %02d:%02d:%02d %s (%s:%d): ",
 			lt.tm_year + 1900, lt.tm_mon + 1, lt.tm_mday, lt.tm_hour, lt.tm_min, lt.tm_sec,
-			trace ? L"TRACE" : L"LOG", file, line);
+			trace ? "TRACE" : "LOG", file, line);
 	}
 
 	va_list varArgs;
