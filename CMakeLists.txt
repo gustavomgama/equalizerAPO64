@@ -96,3 +96,7 @@ add_test(NAME engine_preamp COMMAND test_engine_preamp)
 add_executable(test_filters tests/test_filters.cpp)
 target_link_libraries(test_filters PRIVATE eqapo_core)
 add_test(NAME filters COMMAND test_filters)
+
+add_executable(eqapo-null linux/nullhost/main.cpp)
+target_link_libraries(eqapo-null PRIVATE eqapo_core)
+add_test(NAME null_e2e COMMAND bash ${CMAKE_SOURCE_DIR}/tests/run_null_e2e.sh $<TARGET_FILE:eqapo-null>)
