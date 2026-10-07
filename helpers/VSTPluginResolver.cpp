@@ -11,6 +11,7 @@
 #else
 #include <cstdio>
 #include <cstring>
+#include <dlfcn.h>
 #include <sys/stat.h>
 #endif
 #include <algorithm>
@@ -47,6 +48,18 @@ bool pathExists(const std::string& path, bool& isDir)
 		return false;
 	isDir = S_ISDIR(st.st_mode);
 	return true;
+}
+
+// Capability probe: a native module is VST3 when it exports GetPluginFactory.
+// The handle is closed immediately; the loader reopens it right after.
+bool exportsGetPluginFactory(const std::string& path)
+{
+	void* handle = dlopen(path.c_str(), RTLD_NOW | RTLD_LOCAL);
+	if (handle == nullptr)
+		return false;
+	const bool found = dlsym(handle, "GetPluginFactory") != nullptr;
+	dlclose(handle);
+	return found;
 }
 }
 
@@ -163,7 +176,9 @@ ResolvedPlugin resolvePluginPath(const std::wstring& libPath)
 	if (isELF)
 	{
 		out.path = libPath;
-		out.kind = (ext == ".vst3") ? PluginKind::NativeVST3 : PluginKind::NativeVST2;
+		out.kind = (ext == ".vst3" || exportsGetPluginFactory(n))
+			? PluginKind::NativeVST3
+			: PluginKind::NativeVST2;
 		return out;
 	}
 

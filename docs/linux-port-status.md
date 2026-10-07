@@ -13,6 +13,7 @@ ships; Linux support is additive behind `#ifdef _WIN32` guards, enforced by the
 | `eqapo-null` | WAV in → engine → WAV out (DSP verification) |
 | `eqapo-host` | Native PipeWire virtual sink, hot-reload, fail-fast, stats |
 | VST2 | Native `.so` via `dlopen`; relative paths under `~/.vst`; Windows `.dll` via its yabridge (Wine) wrapper |
+| VST3 | Native `.vst3` bundles/modules via the VST3 host (stereo); Windows `.vst3` via yabridge |
 | `eqapo-editor` | Qt6 GUI: edits `config.txt`, live frequency response, PipeWire device list, all filter GUIs incl. loudness |
 | Packaging | `cmake --install`, desktop entry, systemd user unit |
 
@@ -58,7 +59,8 @@ to apply the chain system-wide. The host hot-reloads
    Out-of-process hosting is the follow-up. Treat third-party plugins as
    trusted code for now.
 4. **FabFilter and other Windows VSTs** are PE binaries and cannot be
-   `dlopen`ed; use yabridge to expose them as native VST2 `.so`.
+   `dlopen`ed; use yabridge to expose them as native plugins (VST2 `.so` or
+   VST3 `.vst3`, both loadable — see `docs/vst.md`).
 5. **Multi-device `Device:` routing** currently maps to a single virtual sink;
    per-device sinks are a follow-up.
 
@@ -67,7 +69,9 @@ to apply the chain system-wide. The host hot-reloads
 `ctest` runs 13 tests: `platform`, `windows_untouched`, `strings`,
 `engine_preamp`, `filters`, `null_e2e` (real WAV through the engine),
 `host_e2e` (live PipeWire virtual sink + link), `vst_e2e` (stub VST2 plugin
-loaded via `dlopen` and its gain asserted), `full_chain_e2e` (every filter
+loaded via `dlopen` and its gain asserted), `vst3_e2e` (stub VST3 gain plugin,
+direct `.so` and bundle layout), `target` (output-target choice),
+`vst_resolve` (Windows/native format mapping), `full_chain_e2e` (every filter
 type in one config), `device_e2e` (`Device:` routing semantics),
 `logging_e2e` (wide-string log formatting), `dsp_e2e` (low-pass gain at
 100 Hz vs 10 kHz — validates the filter math, not just finiteness), and

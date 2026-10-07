@@ -37,6 +37,15 @@ else()
   set(MUPARSERX_INCLUDES ${muparserx_SOURCE_DIR}/parser)
 endif()
 
+# VST3 interface IDs (Steinberg pluginterfaces, GPLv3, vendored under
+# thirdparty/vst3). Only IID definitions are compiled; hosting is ours.
+add_library(vst3base STATIC
+  thirdparty/vst3/pluginterfaces/base/coreiids.cpp
+  thirdparty/vst3/pluginterfaces/base/funknown.cpp
+  helpers/VST3IIDs.cpp
+)
+target_include_directories(vst3base PUBLIC thirdparty/vst3)
+
 add_library(eqapo_core STATIC
   FilterEngine.cpp
   FilterConfiguration.cpp
@@ -75,12 +84,15 @@ add_library(eqapo_core STATIC
   filters/StageFilterFactory.cpp
   filters/VSTPluginFilter.cpp
   filters/VSTPluginFilterFactory.cpp
+  filters/VST3PluginFilter.cpp
   filters/loudnessCorrection/LoudnessCorrectionFilter.cpp
   filters/loudnessCorrection/LoudnessCorrectionFilterFactory.cpp
   filters/loudnessCorrection/VolumeController.cpp
   helpers/VSTPluginInstance.cpp
   helpers/VSTPluginLibrary.cpp
   helpers/VSTPluginResolver.cpp
+  helpers/VST3PluginInstance.cpp
+  helpers/VST3PluginLibrary.cpp
   helpers/AbstractLibrary.cpp
   libHybridConv-0.1.1/libHybridConv_eapo.cpp
 )
@@ -92,7 +104,7 @@ if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|amd64|AMD64")
   target_compile_options(eqapo_core PUBLIC -mavx2 -mfma -mf16c)
 endif()
 target_link_libraries(eqapo_core PUBLIC
-  ${FFTW3_LIBRARIES} fftw3_threads ${SNDFILE_LIBRARIES} ${MUPARSERX_LINK} dl pthread
+  ${FFTW3_LIBRARIES} fftw3_threads ${SNDFILE_LIBRARIES} ${MUPARSERX_LINK} dl pthread vst3base
 )
 
 enable_testing()
@@ -136,6 +148,10 @@ add_library(eqapo-vst-stub SHARED linux/vst-test/stub_plugin.cpp)
 target_include_directories(eqapo-vst-stub PRIVATE ${CMAKE_SOURCE_DIR})
 set_target_properties(eqapo-vst-stub PROPERTIES PREFIX "")
 add_test(NAME vst_e2e COMMAND bash ${CMAKE_SOURCE_DIR}/tests/run_vst_e2e.sh $<TARGET_FILE:eqapo-null> $<TARGET_FILE:eqapo-vst-stub>)
+add_library(eqapo-vst3-stub SHARED linux/vst3-test/stub_plugin.cpp)
+target_link_libraries(eqapo-vst3-stub PRIVATE vst3base)
+set_target_properties(eqapo-vst3-stub PROPERTIES PREFIX "")
+add_test(NAME vst3_e2e COMMAND bash ${CMAKE_SOURCE_DIR}/tests/run_vst3_e2e.sh $<TARGET_FILE:eqapo-null> $<TARGET_FILE:eqapo-vst3-stub>)
 add_test(NAME full_chain_e2e COMMAND bash ${CMAKE_SOURCE_DIR}/tests/run_full_chain_e2e.sh $<TARGET_FILE:eqapo-null> $<TARGET_FILE:eqapo-vst-stub>)
 add_test(NAME device_e2e COMMAND bash ${CMAKE_SOURCE_DIR}/tests/run_device_e2e.sh $<TARGET_FILE:eqapo-null>)
 add_test(NAME logging_e2e COMMAND bash ${CMAKE_SOURCE_DIR}/tests/run_logging_e2e.sh $<TARGET_FILE:eqapo-null>)

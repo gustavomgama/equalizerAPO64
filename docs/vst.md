@@ -2,16 +2,15 @@
 
 `VSTPlugin: Library <path>` accepts native and Windows plugins. Windows
 binaries are never loaded directly (Linux cannot execute PE files); they are
-mapped to a **yabridge** (Wine) wrapper. Native VST3 hosting is being added —
-until it lands, `.vst3` files resolve but report as pending.
+mapped to a **yabridge** (Wine) wrapper. VST3 is hosted natively.
 
 ## Supported
 
 | Path | What happens |
 |---|---|
-| `plugin.so` (Linux VST2) | Loaded via `dlopen` today. Relative paths resolve under `~/.vst`. |
+| `plugin.so` (Linux VST2) | Loaded via `dlopen`. Relative paths resolve under `~/.vst`. |
 | `Plugin.dll` (Windows VST2) | Mapped to `~/.vst/yabridge/<name>.so` if present, else the log prints the exact `yabridgectl add` command. |
-| `Plugin.vst3` (VST3) | Resolved (bundle or file). Native VST3 hosting is in progress; currently reports as pending and the filter passes audio through. |
+| `Plugin.vst3` (VST3 bundle or module) | Hosted natively (stereo float32). Linux bundles, direct `.so` modules, and yabridge VST3 wrappers all load the same way. |
 
 ## Setting up Windows plugins
 

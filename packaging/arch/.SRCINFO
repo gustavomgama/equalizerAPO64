@@ -1,6 +1,6 @@
 pkgbase = equalizerapo64
 	pkgdesc = System-wide equalizer for Linux (PipeWire) - native EqualizerAPO port
-	pkgver = 1.4.2.r78.gd269fe2
+	pkgver = 1.4.2.r79.g5e52b6e
 	pkgrel = 1
 	url = https://github.com/gustavomgama/equalizerAPO64
 	arch = x86_64

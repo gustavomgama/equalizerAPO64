@@ -29,6 +29,7 @@
 #endif
 #include "helpers/aeffectx.h"
 #include "helpers/StringHelper.h"
+#include "helpers/VSTPluginResolver.h"
 #include "Editor/helpers/EditorSettingsHelper.h"
 #include "Editor/helpers/GUIHelper.h"
 #include "Editor/MainWindow.h"
@@ -167,6 +168,32 @@ void VSTPluginFilterGUI::initPlugin()
 	}
 	else
 	{
+#ifndef _WIN32
+		// Map Windows plugins to their native wrapper and report VST3, so the
+		// dialog matches what the engine will load.
+		bool proceed = true;
+		eqapo::ResolvedPlugin resolved = eqapo::resolvePluginPath(library->getLibPath());
+		if (resolved.path.empty())
+		{
+			color = Qt::red;
+			text = !resolved.hint.empty()
+				? QString::fromStdWString(resolved.hint)
+				: tr("File not found.");
+			proceed = false;
+		}
+		else if (resolved.kind == eqapo::PluginKind::NativeVST3)
+		{
+			color = Qt::darkYellow;
+			text = tr("VST3 plugin. Parameters are edited via the config line for now.");
+			proceed = false;
+		}
+		else if (resolved.path != library->getLibPath())
+		{
+			library = VSTPluginLibrary::getInstance(resolved.path);
+		}
+		if (proceed)
+		{
+#endif
 		int result = library->initialize();
 		if (result < 0)
 		{
@@ -213,6 +240,9 @@ void VSTPluginFilterGUI::initPlugin()
 				text = tr("Plugin crashed during initialization.");
 			}
 		}
+#ifndef _WIN32
+		}
+#endif
 	}
 
 	QPalette palette = ui->statusLabel->palette();
@@ -274,13 +304,13 @@ void VSTPluginFilterGUI::on_selectButton_clicked()
 #ifdef _WIN32
 	QFileDialog dialog(this, tr("Select VST plugin"), fileInfo.absoluteFilePath(), "*.dll");
 #else
-	QFileDialog dialog(this, tr("Select VST plugin"), fileInfo.absoluteFilePath(), "*.so");
+	QFileDialog dialog(this, tr("Select VST plugin"), fileInfo.absoluteFilePath(), "*.so *.dll *.vst3");
 #endif
 	dialog.setFileMode(QFileDialog::ExistingFile);
 #ifdef _WIN32
 	dialog.setNameFilter(tr("VST plugins (*.dll)"));
 #else
-	dialog.setNameFilter(tr("VST plugins (*.so)"));
+	dialog.setNameFilter(tr("VST plugins (*.so *.dll *.vst3)"));
 #endif
 	if (path.length() > 0)
 		dialog.selectFile(fileInfo.fileName());

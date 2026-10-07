@@ -29,12 +29,16 @@
 #include "helpers/LogHelper.h"
 #include "VSTPluginFilter.h"
 #include "VSTPluginFilterFactory.h"
+#ifndef _WIN32
+#include "helpers/VST3PluginLibrary.h"
+#include "VST3PluginFilter.h"
+#endif
 
 using namespace std;
 
 vector<IFilter*> VSTPluginFilterFactory::createFilter(const wstring& configPath, wstring& command, wstring& parameters)
 {
-	VSTPluginFilter* filter = NULL;
+	IFilter* filter = NULL;
 
 	if (command == L"VSTPlugin")
 	{
@@ -91,8 +95,36 @@ vector<IFilter*> VSTPluginFilterFactory::createFilter(const wstring& configPath,
 				}
 				else if (resolved.kind == eqapo::PluginKind::NativeVST3)
 				{
+#ifndef _WIN32
+					std::shared_ptr<VST3PluginLibrary> library3 =
+						VST3PluginLibrary::getInstance(resolved.path);
+					bool create = true;
+					if (configPath != L"")
+					{
+						create = false;
+						TraceF(L"Adding VST3 plugin %s", library3->getLibPath().c_str());
+						int res = library3->initialize();
+						if (res < 0)
+						{
+							if (res == AbstractLibrary::FILE_NOT_FOUND)
+								LogF(L"File %s not found", library3->getLibPath().c_str());
+							else if (res == AbstractLibrary::LOADING_FAILED)
+								LogF(L"Library %s could not be loaded", library3->getLibPath().c_str());
+							else
+								LogF(L"Library %s does not contain a VST3 effect", library3->getLibPath().c_str());
+						}
+						else
+						{
+							create = true;
+						}
+					}
+
+					if (create)
+						filter = new VST3PluginFilter(library3, chunkData, paramMap);
+#else
 					if (configPath != L"")
 						LogF(L"VST3 plugin %s detected (native VST3 support is being added)", resolved.path.c_str());
+#endif
 				}
 				else
 				{

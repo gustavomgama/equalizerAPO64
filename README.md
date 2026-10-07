@@ -94,8 +94,8 @@ real device and never loops back into the virtual sink.
 
 VST2 plugins load natively: a `VSTPlugin: Library /path/to/plugin.so` line in
 the config is resolved through `dlopen`. Relative paths resolve against
-`~/.vst`. Windows VST2 (`.dll`) loads through its yabridge (Wine) wrapper —
-see [docs/vst.md](docs/vst.md). Native VST3 support is in progress.
+`~/.vst`. Windows VST2 (`.dll`) loads through its yabridge (Wine) wrapper, and
+native VST3 (`.vst3`) plugins are hosted directly — see [docs/vst.md](docs/vst.md).
 
 ### Installing
 
