@@ -1,6 +1,6 @@
 pkgbase = equalizerapo64
 	pkgdesc = System-wide equalizer for Linux (PipeWire) - native EqualizerAPO port
-	pkgver = 1.4.2.r73.g1dc32e0
+	pkgver = 1.4.2.r78.gd269fe2
 	pkgrel = 1
 	url = https://github.com/gustavomgama/equalizerAPO64
 	arch = x86_64
@@ -13,7 +13,8 @@ pkgbase = equalizerapo64
 	depends = pipewire
 	depends = qt6-base
 	optdepends = wireplumber: loudness correction reads the default sink volume via wpctl
-	optdepends = yabridge: run Windows VST2 plugins
+	optdepends = wine: run Windows VST plugins (.dll/.vst3) via yabridge
+	optdepends = yabridge: bridge Windows VST2/VST3 plugins to native Linux (AUR)
 	options = !debug
 	source = muparserx::git+https://github.com/thefirekahuna/muparserx.git#commit=0a48779615103ca5baa301be9eefecdf23156ec6
 	sha256sums = SKIP

@@ -6,7 +6,7 @@
 # targets already present in the repository.
 
 pkgname=equalizerapo64
-pkgver=1.4.2.r73.g1dc32e0
+pkgver=1.4.2.r78.gd269fe2
 pkgrel=1
 pkgdesc="System-wide equalizer for Linux (PipeWire) - native EqualizerAPO port"
 arch=('x86_64')
@@ -18,7 +18,8 @@ depends=('fftw' 'libsndfile' 'pipewire' 'qt6-base')
 makedepends=('cmake' 'pkgconf' 'git')
 optdepends=(
   'wireplumber: loudness correction reads the default sink volume via wpctl'
-  'yabridge: run Windows VST2 plugins'
+  'wine: run Windows VST plugins (.dll/.vst3) via yabridge'
+  'yabridge: bridge Windows VST2/VST3 plugins to native Linux (AUR)'
 )
 _repodir="$startdir/../.."
 

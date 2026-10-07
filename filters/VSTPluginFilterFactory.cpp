@@ -25,6 +25,7 @@
 #endif
 #include "helpers/StringHelper.h"
 #include "helpers/VSTPluginLibrary.h"
+#include "helpers/VSTPluginResolver.h"
 #include "helpers/LogHelper.h"
 #include "VSTPluginFilter.h"
 #include "VSTPluginFilterFactory.h"
@@ -73,7 +74,32 @@ vector<IFilter*> VSTPluginFilterFactory::createFilter(const wstring& configPath,
 				}
 #endif
 
-				library = VSTPluginLibrary::getInstance(libPath);
+				// Resolve Windows plugins to their native (yabridge) wrapper and
+				// detect VST3 before touching the loader. (VST3 hosting is Phase 2.)
+				eqapo::ResolvedPlugin resolved = eqapo::resolvePluginPath(libPath);
+				if (resolved.path.empty())
+				{
+					if (configPath != L"")
+					{
+						if (!resolved.hint.empty())
+							LogF(L"%s", resolved.hint.c_str());
+						else if (resolved.kind == eqapo::PluginKind::Missing)
+							LogF(L"File %s not found", libPath.c_str());
+						else
+							LogF(L"Library %s could not be loaded", libPath.c_str());
+					}
+				}
+				else if (resolved.kind == eqapo::PluginKind::NativeVST3)
+				{
+					if (configPath != L"")
+						LogF(L"VST3 plugin %s detected (native VST3 support is being added)", resolved.path.c_str());
+				}
+				else
+				{
+					if (resolved.path != libPath)
+						TraceF(L"Mapped plugin %s to %s", libPath.c_str(), resolved.path.c_str());
+					library = VSTPluginLibrary::getInstance(resolved.path);
+				}
 			}
 			else if (key == L"ChunkData")
 			{

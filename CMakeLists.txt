@@ -80,6 +80,7 @@ add_library(eqapo_core STATIC
   filters/loudnessCorrection/VolumeController.cpp
   helpers/VSTPluginInstance.cpp
   helpers/VSTPluginLibrary.cpp
+  helpers/VSTPluginResolver.cpp
   helpers/AbstractLibrary.cpp
   libHybridConv-0.1.1/libHybridConv_eapo.cpp
 )
@@ -115,6 +116,10 @@ add_test(NAME filters COMMAND test_filters)
 add_executable(test_target tests/test_target.cpp)
 target_link_libraries(test_target PRIVATE eqapo_core)
 add_test(NAME target COMMAND test_target)
+
+add_executable(test_vst_resolve tests/test_vst_resolve.cpp)
+target_link_libraries(test_vst_resolve PRIVATE eqapo_core)
+add_test(NAME vst_resolve COMMAND test_vst_resolve)
 
 add_executable(eqapo-null linux/nullhost/main.cpp)
 target_link_libraries(eqapo-null PRIVATE eqapo_core)
