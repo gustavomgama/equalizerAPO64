@@ -21,16 +21,25 @@ namespace eqapo
 // defaultSink:    WirePlumber's default.audio.sink name ("" if unknown)
 // sinks:          every Audio/Sink node.name currently visible
 // Returns the node name to target, or "" to leave routing to the default.
+// PipeWire placeholder sinks that must never be an output target. At boot the
+// real hardware may not be enumerated yet; settling for one of these mutes
+// the host instead of waiting for hardware.
+inline bool isDummySink(const std::string& name)
+{
+	return name == "auto_null" || name == "Dummy-Driver" || name == "Freewheel-Driver"
+		|| name.rfind("auto_null.", 0) == 0;
+}
+
 inline std::string chooseOutputTarget(const std::string& explicitTarget,
 	const std::string& self, const std::string& defaultSink,
 	const std::vector<std::string>& sinks)
 {
 	if (!explicitTarget.empty())
 		return explicitTarget;
-	if (!defaultSink.empty() && defaultSink != self)
+	if (!defaultSink.empty() && defaultSink != self && !isDummySink(defaultSink))
 		return defaultSink;
 	for (const std::string& sink : sinks)
-		if (sink != self)
+		if (sink != self && !isDummySink(sink))
 			return sink;
 	return {};
 }

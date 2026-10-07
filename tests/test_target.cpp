@@ -35,6 +35,13 @@ int main()
 	// No default: fall back to the first non-self sink.
 	assert(chooseOutputTarget("", "self", "", {"self", "hw"}) == "hw");
 
+	// Dummy sinks are never chosen, even when default or first listed.
+	assert(eqapo::isDummySink("auto_null"));
+	assert(eqapo::isDummySink("Dummy-Driver"));
+	assert(!eqapo::isDummySink("alsa_output.hw"));
+	assert(chooseOutputTarget("", "self", "auto_null", {"self", "auto_null", "hw"}) == "hw");
+	assert(chooseOutputTarget("", "self", "", {"self", "auto_null"}).empty());
+
 	// The Editor writes `Device: <description> <name> <name>` for the sink the
 	// user picked; the host's identity must match it (the bug where only the
 	// EqualizerAPO entry worked).

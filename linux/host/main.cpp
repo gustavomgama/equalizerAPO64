@@ -372,7 +372,10 @@ int main(int argc, char** argv)
 	// the user selects it — creating a feedback loop.
 	std::vector<Sink> sinks;
 	std::string outTarget = target;
-	for (int attempt = 0; outTarget.empty() && attempt < 15; ++attempt)
+	// Retry while no real sink is visible. At boot only dummy sinks
+	// (auto_null) may exist; chooseOutputTarget skips those, so keep waiting
+	// for hardware instead of settling. Resolves immediately when ready.
+	for (int attempt = 0; outTarget.empty() && attempt < 50; ++attempt)
 	{
 		sinks = listSinks();
 		outTarget = eqapo::chooseOutputTarget(target, nodeName, defaultSinkName(), sinkNames(sinks));
