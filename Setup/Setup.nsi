@@ -67,7 +67,6 @@ SetCompressor /SOLID lzma
 
   !insertmacro MUI_UNPAGE_WELCOME
   !insertmacro MUI_UNPAGE_CONFIRM
-  !insertmacro MUI_UNPAGE_COMPONENTS
   !insertmacro MUI_UNPAGE_INSTFILES
   !insertmacro MUI_UNPAGE_FINISH
 
@@ -300,14 +299,6 @@ SectionEnd
 LangString SecRemoveName ${LANG_ENGLISH} "Remove configurations and registry backups"
 LangString SecRemoveName ${LANG_GERMAN} "Konfigurationen und Registrierungsbackups entfernen"
 
-Section /o un.$(SecRemoveName)
-  
-  Delete "$INSTDIR\*.reg"
-  RMDir /REBOOTOK /r "$INSTDIR\config"
-  DeleteRegKey HKCU ${REGPATH}
-  
-SectionEnd
-
 Section "-un.Uninstall"
   !if ${LIBPATH} != "lib32"
 	SetRegView 64
@@ -327,7 +318,7 @@ Section "-un.Uninstall"
   !insertmacro MUI_STARTMENU_GETFOLDER Application $StartMenuFolder
   RMDir /r "$SMPROGRAMS\$StartMenuFolder"
   
-  RMDir "$INSTDIR\VSTPlugins"
+  RMDir /r "$INSTDIR\VSTPlugins"
   
   Delete "$INSTDIR\Configuration reference (online).url"
   Delete "$INSTDIR\Configuration tutorial (online).url"
@@ -351,10 +342,20 @@ Section "-un.Uninstall"
 
   Delete "$INSTDIR\Uninstall.exe"
 
-  ;Only remove if empty
-  RMDir /REBOOTOK "$INSTDIR"
+  ;Remove configurations and registry backups unconditionally
+  Delete "$INSTDIR\*.reg"
+  RMDir /REBOOTOK /r "$INSTDIR\config"
+  DeleteRegKey HKCU ${REGPATH}
+
+  ;Remove the whole installation directory and any leftovers
+  RMDir /r /REBOOTOK "$INSTDIR"
+
+  ;Remove log files left in temp directories
+  Delete "$TEMP\EqualizerAPO.log"
+  Delete "$WINDIR\Temp\EqualizerAPO.log"
+  Delete "$WINDIR\ServiceProfiles\LocalService\AppData\Local\Temp\EqualizerAPO.log"
 
   DeleteRegKey HKLM ${UNINST_REGPATH}
-  DeleteRegKey /ifempty HKLM ${REGPATH}
+  DeleteRegKey HKLM ${REGPATH}
 
 SectionEnd
