@@ -350,10 +350,13 @@ Section "-un.Uninstall"
   ;Remove the whole installation directory and any leftovers
   RMDir /r /REBOOTOK "$INSTDIR"
 
+  ;Remove scheduled task (fallback in case UpdateChecker -u did not)
+  ExecWait 'schtasks /Delete /TN "EqualizerAPOUpdateChecker" /F'
+
   ;Remove log files left in temp directories
-  Delete "$TEMP\EqualizerAPO.log"
-  Delete "$WINDIR\Temp\EqualizerAPO.log"
-  Delete "$WINDIR\ServiceProfiles\LocalService\AppData\Local\Temp\EqualizerAPO.log"
+  Delete /REBOOTOK "$TEMP\EqualizerAPO.log"
+  Delete /REBOOTOK "$WINDIR\Temp\EqualizerAPO.log"
+  Delete /REBOOTOK "$WINDIR\ServiceProfiles\LocalService\AppData\Local\Temp\EqualizerAPO.log"
 
   DeleteRegKey HKLM ${UNINST_REGPATH}
   DeleteRegKey HKLM ${REGPATH}
